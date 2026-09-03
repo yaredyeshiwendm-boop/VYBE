@@ -884,3 +884,89 @@ router.delete("/:id/save", requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+
+/*
+ * POST /api/posts/:id/report
+ * Report a post
+ */
+router.post("/:id/report", requireAuth, async (req, res) => {
+  try {
+    const postId = String(req.params.id || "").trim();
+
+    const reason = String(req.body?.reason || "").trim().toLowerCase();
+    const details = String(req.body?.details || "").trim();
+
+    const allowedReasons = new Set([
+      "spam",
+      "harassment",
+      "hate",
+      "violence",
+      "sexual",
+      "misinformation",
+      "other"
+    ]);
+
+    if (!allowedReasons.has(reason)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid report reason"
+      });
+    }
+
+    if (details.length > 500) {
+      return res.status(400).json({
+        success: false,
+        error: "Report details are too long"
+      });
+    }
+
+    const postCheck = await query(
+      `SELECT id
+       FROM posts
+       WHERE id = $1`,
+      [postId]
+    );
+
+    if (postCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Post not found"
+      });
+    }
+
+    const result = await query(
+      `INSERT INTO reports
+        (reporter_id, post_id, reason, details)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (reporter_id, post_id)
+       DO NOTHING
+       RETURNING
+        id,
+        post_id,
+        reason,
+        details,
+        status,
+        created_at`,
+      [
+        req.user.id,
+        postId,
+        reason,
+        details
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      created: result.rows.length > 0,
+      already_reported: result.rows.length === 0,
+      report: result.rows[0] || null
+    });
+  } catch (error) {
+    console.error("Report post error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not report post"
+    });
+  }
+});

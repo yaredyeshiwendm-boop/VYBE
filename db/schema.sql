@@ -189,3 +189,35 @@ CREATE INDEX IF NOT EXISTS idx_follows_follower
 
 CREATE INDEX IF NOT EXISTS idx_follows_following
     ON follows (following_id, created_at DESC);
+
+/*
+ * Reports
+ */
+CREATE TABLE IF NOT EXISTS reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reporter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    reason VARCHAR(100) NOT NULL,
+    details VARCHAR(500) DEFAULT '',
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT report_reason_not_empty
+        CHECK (char_length(btrim(reason)) >= 1),
+
+    CONSTRAINT report_status_valid
+        CHECK (status IN ('pending', 'reviewed', 'resolved', 'dismissed')),
+
+    CONSTRAINT unique_pending_post_report
+        UNIQUE (reporter_id, post_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reports_post
+    ON reports (post_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_reports_reporter
+    ON reports (reporter_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_reports_status
+    ON reports (status, created_at DESC);

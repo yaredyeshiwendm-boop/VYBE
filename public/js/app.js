@@ -2388,6 +2388,116 @@ async function copyPostLink(postId) {
 }
 
 
+async function forwardPost(postId) {
+  const card = document.querySelector(
+    `[data-post-id="${CSS.escape(postId)}"]`
+  );
+
+  if (!card) return;
+
+  const text =
+    card.querySelector(".post-content")?.textContent?.trim() || "";
+
+  const username =
+    card.querySelector(".post-author-username")?.dataset.username || "";
+
+  const url =
+    `${window.location.origin}/?post=${encodeURIComponent(postId)}`;
+
+  const shareData = {
+    title: username ? `VYBE post by @${username}` : "VYBE post",
+    text,
+    url
+  };
+
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+      closeAllPostActionMenus();
+      return;
+    }
+
+    await navigator.clipboard.writeText(
+      `${text}\n\n${url}`
+    );
+
+    closeAllPostActionMenus();
+    alert("Post link copied. You can forward it anywhere.");
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+
+    console.error("Forward post error:", error);
+    alert("Could not forward this post.");
+  }
+}
+
+
+async function reportPost(postId) {
+  const reason = window.prompt(
+    "Why are you reporting this post?\n\n" +
+    "spam\n" +
+    "harassment\n" +
+    "hate\n" +
+    "violence\n" +
+    "sexual\n" +
+    "misinformation\n" +
+    "other"
+  );
+
+  if (reason === null) return;
+
+  const normalizedReason =
+    reason.trim().toLowerCase();
+
+  const allowedReasons = [
+    "spam",
+    "harassment",
+    "hate",
+    "violence",
+    "sexual",
+    "misinformation",
+    "other"
+  ];
+
+  if (!allowedReasons.includes(normalizedReason)) {
+    alert("Invalid report reason.");
+    return;
+  }
+
+  const details = window.prompt(
+    "Additional details (optional):"
+  );
+
+  if (details === null) return;
+
+  try {
+    const data = await api(
+      `/api/posts/${encodeURIComponent(postId)}/report`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          reason: normalizedReason,
+          details: details.trim()
+        })
+      }
+    );
+
+    closeAllPostActionMenus();
+
+    if (data.already_reported) {
+      alert("You already reported this post.");
+    } else {
+      alert("Report submitted.");
+    }
+  } catch (error) {
+    alert(
+      error.message ||
+      "Could not report this post."
+    );
+  }
+}
+
+
 function setupPostInteractions() {
   const cards = document.querySelectorAll(
     "[data-post-id]"
@@ -2565,6 +2675,30 @@ function setupPostInteractions() {
         event => {
           event.stopPropagation();
           copyPostLink(postId);
+        }
+      );
+    });
+
+    card.querySelectorAll(
+      "[data-menu-forward]"
+    ).forEach(button => {
+      button.addEventListener(
+        "click",
+        async event => {
+          event.stopPropagation();
+          await forwardPost(postId);
+        }
+      );
+    });
+
+    card.querySelectorAll(
+      "[data-menu-report]"
+    ).forEach(button => {
+      button.addEventListener(
+        "click",
+        async event => {
+          event.stopPropagation();
+          await reportPost(postId);
         }
       );
     });
