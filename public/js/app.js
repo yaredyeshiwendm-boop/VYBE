@@ -3319,3 +3319,14 @@ document.addEventListener("click", event => {
 
   showSearch();
 });
+
+/* --------------------------------
+   HOME NAVIGATION
+-------------------------------- */
+
+document
+  .querySelector('[data-nav="home"]')
+  .addEventListener("click", event => {
+    event.preventDefault();
+    showHome();
+  });
