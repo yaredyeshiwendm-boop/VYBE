@@ -402,6 +402,29 @@
             <span id="postCharacterCount">0</span>/2000
           </div>
 
+          <div class="post-media-picker">
+            <label
+              class="media-picker-button"
+              for="postMediaInput"
+            >
+              <span>＋</span>
+              <span>Photo / Video</span>
+            </label>
+
+            <input
+              id="postMediaInput"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+              multiple
+              hidden
+            />
+
+            <div
+              id="postMediaPreview"
+              class="post-media-preview hidden"
+            ></div>
+          </div>
+
           <div id="createPostError"
                class="form-error hidden"></div>
 

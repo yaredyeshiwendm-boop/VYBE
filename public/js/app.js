@@ -2,7 +2,8 @@
 
 const state = {
   user: null,
-  authenticated: false
+  authenticated: false,
+  createPostMedia: []
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -350,12 +351,7 @@ document
 
 /* Navigation */
 
-$("#createFirstPost").addEventListener(
-  "click",
-  () => {
-    alert("Create Post is coming next.");
-  }
-);
+
 
 /* --------------------------------
    STARTUP
@@ -839,6 +835,47 @@ function renderPublicProfilePosts(posts) {
         <div class="post-content">
           ${escapeHtml(post.content)}
         </div>
+
+        ${
+          Array.isArray(post.media) && post.media.length
+            ? `
+              <div class="post-media ${post.media.length === 1 ? "single" : post.media.length === 2 ? "two" : post.media.length === 3 ? "three" : "four"}">
+                ${post.media.slice(0, 4).map(media => {
+                  const url = escapeHtml(media.url || "");
+                  const mime = escapeHtml(media.mime_type || "");
+
+                  if (media.media_type === "video") {
+                    return `
+                      <div class="post-media-item">
+                        <video
+                          src="${url}"
+                          controls
+                          preload="metadata"
+                          playsinline
+                          aria-label="Post video"
+                        >
+                          Your browser does not support video playback.
+                        </video>
+                      </div>
+                    `;
+                  }
+
+                  return `
+                    <div class="post-media-item">
+                      <img
+                        src="${url}"
+                        alt="Post image"
+                        loading="lazy"
+                        decoding="async"
+                        onerror="this.closest('.post-media-item').classList.add('media-load-error')"
+                      >
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            `
+            : ""
+        }
 
         <div
           class="post-comments-trigger"
@@ -2923,24 +2960,18 @@ document.addEventListener(
 
 
 function openCreatePost() {
-  clearError(
-    document.getElementById("createPostError")
-  );
+  clearError(document.getElementById("createPostError"));
 
-  document.getElementById(
-    "postContent"
-  ).value = "";
+  document.getElementById("postContent").value = "";
+  document.getElementById("postCharacterCount").textContent = "0";
 
-  document.getElementById(
-    "postCharacterCount"
-  ).textContent = "0";
+  state.createPostMedia = [];
+  renderPostMediaPreview();
 
   show(createPostModal);
 
   setTimeout(() => {
-    document.getElementById(
-      "postContent"
-    ).focus();
+    document.getElementById("postContent").focus();
   }, 100);
 }
 
@@ -2948,23 +2979,136 @@ function closeCreatePost() {
   hide(createPostModal);
 }
 
+async function uploadPostMedia(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch("/api/media", {
+    method: "POST",
+    credentials: "include",
+    body: formData
+  });
+
+  let data = {};
+
+  try {
+    data = await response.json();
+  } catch {}
+
+  if (!response.ok || !data.success) {
+    throw new Error(
+      data.error || "Could not upload media."
+    );
+  }
+
+  return data.media;
+}
+
+function renderPostMediaPreview() {
+  const preview =
+    document.getElementById("postMediaPreview");
+
+  if (!preview) return;
+
+  if (!state.createPostMedia.length) {
+    preview.innerHTML = "";
+    preview.classList.add("hidden");
+    return;
+  }
+
+  preview.classList.remove("hidden");
+
+  preview.innerHTML = state.createPostMedia
+    .map((media, index) => {
+      const isVideo =
+        media.media_type === "video";
+
+      return `
+        <div class="post-media-preview-item">
+          ${
+            isVideo
+              ? `<video
+                   src="${escapeHtml(media.url)}"
+                   muted
+                   playsinline
+                   controls
+                 ></video>`
+              : `<img
+                   src="${escapeHtml(media.url)}"
+                   alt="Selected media"
+                 >`
+          }
+
+          <button
+            type="button"
+            class="post-media-remove"
+            data-remove-media-index="${index}"
+            aria-label="Remove media"
+          >
+            ×
+          </button>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+async function handlePostMediaSelection(event) {
+  const files = Array.from(event.target.files || []);
+
+  if (!files.length) return;
+
+  const errorElement =
+    document.getElementById("createPostError");
+
+  clearError(errorElement);
+
+  if (
+    state.createPostMedia.length +
+    files.length > 4
+  ) {
+    showError(
+      errorElement,
+      "You can attach up to 4 media files."
+    );
+
+    event.target.value = "";
+    return;
+  }
+
+  const button =
+    document.getElementById("publishPostButton");
+
+  button.disabled = true;
+
+  try {
+    for (const file of files) {
+      const media = await uploadPostMedia(file);
+      state.createPostMedia.push(media);
+      renderPostMediaPreview();
+    }
+  } catch (error) {
+    showError(
+      errorElement,
+      error.message || "Could not upload media."
+    );
+  } finally {
+    button.disabled = false;
+    event.target.value = "";
+  }
+}
+
 async function createPost(event) {
   event.preventDefault();
 
   const content =
-    document.getElementById(
-      "postContent"
-    ).value.trim();
+    document.getElementById("postContent").value.trim();
 
   const errorElement =
-    document.getElementById(
-      "createPostError"
-    );
+    document.getElementById("createPostError");
 
   const button =
-    document.getElementById(
-      "publishPostButton"
-    );
+    document.getElementById("publishPostButton");
 
   clearError(errorElement);
 
@@ -2979,18 +3123,26 @@ async function createPost(event) {
   setButtonLoading(button, true);
 
   try {
-    const data = await api(
+    const mediaIds =
+      state.createPostMedia.map(media => media.id);
+
+    await api(
       "/api/posts",
       {
         method: "POST",
-        body: JSON.stringify({ content })
+        body: JSON.stringify({
+          content,
+          media_ids: mediaIds
+        })
       }
     );
+
+    state.createPostMedia = [];
+    renderPostMediaPreview();
 
     closeCreatePost();
 
     await loadPosts();
-
     await loadProfile();
 
   } catch (error) {
@@ -3639,3 +3791,36 @@ document
     event.preventDefault();
     showActivity();
   });
+
+/* VYBE post media picker wiring */
+(() => {
+  const input = document.getElementById("postMediaInput");
+  const preview = document.getElementById("postMediaPreview");
+
+  if (!input) return;
+
+  input.addEventListener("change", handlePostMediaSelection);
+
+  if (preview) {
+    preview.addEventListener("click", event => {
+      const button = event.target.closest(
+        "[data-remove-media-index]"
+      );
+
+      if (!button) return;
+
+      const index = Number(
+        button.dataset.removeMediaIndex
+      );
+
+      if (
+        Number.isInteger(index) &&
+        index >= 0 &&
+        index < state.createPostMedia.length
+      ) {
+        state.createPostMedia.splice(index, 1);
+        renderPostMediaPreview();
+      }
+    });
+  }
+})();

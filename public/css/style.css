@@ -2072,3 +2072,139 @@ body.comments-open {
     padding: 11px 8px;
   }
 }
+
+/* ========================================
+   VYBE POST MEDIA
+   ======================================== */
+
+.post-media-picker {
+  margin-top: 14px;
+}
+
+.media-picker-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  background: rgba(255,255,255,.05);
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.media-picker-button:active {
+  transform: scale(.98);
+}
+
+.post-media-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.post-media-preview-item {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #111;
+  aspect-ratio: 1 / 1;
+}
+
+.post-media-preview-item img,
+.post-media-preview-item video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.post-media-remove {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,.72);
+  color: #fff;
+  font-size: 21px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.post-media {
+  margin-top: 12px;
+  display: grid;
+  gap: 4px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #111;
+}
+
+.post-media.single {
+  grid-template-columns: 1fr;
+}
+
+.post-media.two,
+.post-media.four {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.post-media.three {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.post-media-item {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: #111;
+  aspect-ratio: 1 / 1;
+}
+
+.post-media.single .post-media-item {
+  aspect-ratio: auto;
+  max-height: 520px;
+}
+
+.post-media-item img,
+.post-media-item video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.post-media.single .post-media-item img,
+.post-media.single .post-media-item video {
+  max-height: 520px;
+  object-fit: contain;
+}
+
+@media (max-width: 430px) {
+  .post-media.single .post-media-item,
+  .post-media.single .post-media-item img,
+  .post-media.single .post-media-item video {
+    max-height: 430px;
+  }
+}
+
+.post-media-item.media-load-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  background: rgba(255,255,255,.04);
+}
+
+.post-media-item.media-load-error::after {
+  content: "Media couldn't be loaded";
+  color: rgba(255,255,255,.55);
+  font-size: 13px;
+}

@@ -266,3 +266,122 @@ CREATE INDEX IF NOT EXISTS idx_notifications_recipient_unread
 
 CREATE INDEX IF NOT EXISTS idx_notifications_actor
     ON notifications (actor_id);
+
+-- ========================================
+-- VYBE MEDIA
+-- ========================================
+
+CREATE TABLE IF NOT EXISTS media (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id UUID NOT NULL
+        REFERENCES users(id) ON DELETE CASCADE,
+
+    post_id UUID
+        REFERENCES posts(id) ON DELETE CASCADE,
+
+    media_type VARCHAR(10) NOT NULL,
+
+    url TEXT NOT NULL,
+
+    mime_type VARCHAR(100) NOT NULL,
+
+    size_bytes BIGINT NOT NULL,
+
+    width INTEGER,
+    height INTEGER,
+    duration_ms INTEGER,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT media_type_valid
+        CHECK (media_type IN ('image', 'video')),
+
+    CONSTRAINT media_url_not_empty
+        CHECK (char_length(btrim(url)) >= 1),
+
+    CONSTRAINT media_mime_not_empty
+        CHECK (char_length(btrim(mime_type)) >= 1),
+
+    CONSTRAINT media_size_valid
+        CHECK (size_bytes > 0),
+
+    CONSTRAINT media_dimensions_valid
+        CHECK (
+            (width IS NULL AND height IS NULL)
+            OR
+            (width > 0 AND height > 0)
+        ),
+
+    CONSTRAINT media_duration_valid
+        CHECK (
+            duration_ms IS NULL
+            OR duration_ms > 0
+        )
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_user_created
+    ON media (user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_media_post_created
+    ON media (post_id, created_at ASC);
+
+CREATE INDEX IF NOT EXISTS idx_media_type
+    ON media (media_type);
+
+
+-- ========================================
+-- VYBE STORIES
+-- ========================================
+
+CREATE TABLE IF NOT EXISTS stories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id UUID NOT NULL
+        REFERENCES users(id) ON DELETE CASCADE,
+
+    media_id UUID NOT NULL
+        REFERENCES media(id) ON DELETE CASCADE,
+
+    caption VARCHAR(500) DEFAULT '',
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    expires_at TIMESTAMPTZ NOT NULL
+        DEFAULT (NOW() + INTERVAL '24 hours')
+);
+
+CREATE INDEX IF NOT EXISTS idx_stories_user_created
+    ON stories (user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_stories_active
+    ON stories (expires_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_stories_media
+    ON stories (media_id);
+
+
+-- ========================================
+-- VYBE STORY VIEWS
+-- ========================================
+
+CREATE TABLE IF NOT EXISTS story_views (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    story_id UUID NOT NULL
+        REFERENCES stories(id) ON DELETE CASCADE,
+
+    viewer_id UUID NOT NULL
+        REFERENCES users(id) ON DELETE CASCADE,
+
+    viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT unique_story_view
+        UNIQUE (story_id, viewer_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_story_views_story
+    ON story_views (story_id, viewed_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_story_views_viewer
+    ON story_views (viewer_id, viewed_at DESC);

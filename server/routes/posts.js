@@ -102,7 +102,28 @@ router.get("/", optionalAuth, async (req, res) => {
           FROM saves sp
           WHERE sp.post_id = p.id
             AND sp.user_id = $1
-        ) AS viewer_saved
+        ) AS viewer_saved,
+
+        COALESCE(
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', m.id,
+                'media_type', m.media_type,
+                'url', m.url,
+                'mime_type', m.mime_type,
+                'size_bytes', m.size_bytes,
+                'width', m.width,
+                'height', m.height,
+                'duration_ms', m.duration_ms
+              )
+              ORDER BY m.created_at ASC
+            )
+            FROM media m
+            WHERE m.post_id = p.id
+          ),
+          '[]'::json
+        ) AS media
 
        FROM posts p
 
@@ -152,24 +173,76 @@ router.post("/", requireAuth, async (req, res) => {
       });
     }
 
-    const result = await query(
+    let mediaIds = req.body.media_ids;
+
+    if (mediaIds === undefined || mediaIds === null) {
+      mediaIds = [];
+    }
+
+    if (!Array.isArray(mediaIds)) {
+      return res.status(400).json({
+        success: false,
+        error: "media_ids must be an array"
+      });
+    }
+
+    mediaIds = [
+      ...new Set(
+        mediaIds
+          .map(id => String(id || "").trim())
+          .filter(Boolean)
+      )
+    ];
+
+    if (mediaIds.length > 4) {
+      return res.status(400).json({
+        success: false,
+        error: "A post can contain at most 4 media files"
+      });
+    }
+
+    if (mediaIds.length > 0) {
+      const mediaCheck = await query(
+        `SELECT id
+         FROM media
+         WHERE id = ANY($1::uuid[])
+           AND user_id = $2
+           AND post_id IS NULL`,
+        [mediaIds, req.user.id]
+      );
+
+      if (mediaCheck.rows.length !== mediaIds.length) {
+        return res.status(400).json({
+          success: false,
+          error: "One or more media files are invalid or unavailable"
+        });
+      }
+    }
+
+    const postResult = await query(
       `INSERT INTO posts
         (user_id, content)
-
        VALUES ($1, $2)
-
        RETURNING
         id,
         content,
         created_at,
         updated_at`,
-      [
-        req.user.id,
-        content
-      ]
+      [req.user.id, content]
     );
 
-    const post = result.rows[0];
+    const post = postResult.rows[0];
+
+    if (mediaIds.length > 0) {
+      await query(
+        `UPDATE media
+         SET post_id = $1
+         WHERE id = ANY($2::uuid[])
+           AND user_id = $3
+           AND post_id IS NULL`,
+        [post.id, mediaIds, req.user.id]
+      );
+    }
 
     const author = await query(
       `SELECT
@@ -183,13 +256,35 @@ router.post("/", requireAuth, async (req, res) => {
       [req.user.id]
     );
 
+    const mediaResult = await query(
+      `SELECT
+        id,
+        media_type,
+        url,
+        mime_type,
+        size_bytes,
+        width,
+        height,
+        duration_ms
+       FROM media
+       WHERE post_id = $1
+       ORDER BY created_at ASC`,
+      [post.id]
+    );
+
     res.status(201).json({
       success: true,
       post: {
         ...post,
         ...author.rows[0],
         reaction_count: 0,
-        viewer_reaction: null
+        reaction_counts: {},
+        viewer_reaction: null,
+        repost_count: 0,
+        viewer_reposted: false,
+        save_count: 0,
+        viewer_saved: false,
+        media: mediaResult.rows
       }
     });
   } catch (error) {
@@ -203,15 +298,6 @@ router.post("/", requireAuth, async (req, res) => {
 });
 
 
-/*
- * PUT /api/posts/:id/reaction
- * Add or change current user's reaction
- *
- * Body:
- * {
- *   "reaction": "like"
- * }
- */
 router.put("/:id/reaction", requireAuth, async (req, res) => {
   try {
     const postId = String(req.params.id);
