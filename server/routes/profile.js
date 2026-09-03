@@ -1,7 +1,7 @@
 const express = require("express");
 
 const { query } = require("../../db");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, optionalAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -26,7 +26,19 @@ router.get("/me", requireAuth, async (req, res) => {
           SELECT COUNT(*)
           FROM posts p
           WHERE p.user_id = u.id
-        ) AS posts_count
+        )::int AS posts_count,
+
+        (
+          SELECT COUNT(*)
+          FROM follows f
+          WHERE f.following_id = u.id
+        )::int AS followers_count,
+
+        (
+          SELECT COUNT(*)
+          FROM follows f
+          WHERE f.follower_id = u.id
+        )::int AS following_count
 
        FROM users u
        WHERE u.id = $1`,
@@ -153,6 +165,191 @@ router.put("/me", requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Could not update profile"
+    });
+  }
+});
+
+
+/*
+ * GET /api/profile/:username
+ * Public profile
+ */
+router.get("/:username", optionalAuth, async (req, res) => {
+  try {
+    const username = String(req.params.username || "").trim().toLowerCase();
+
+    const result = await query(
+      `SELECT
+        u.id,
+        u.username,
+        u.display_name,
+        u.bio,
+        u.avatar_url,
+        u.is_verified,
+        u.created_at,
+
+        (
+          SELECT COUNT(*)
+          FROM posts p
+          WHERE p.user_id = u.id
+        )::int AS posts_count,
+
+        (
+          SELECT COUNT(*)
+          FROM follows f
+          WHERE f.following_id = u.id
+        )::int AS followers_count,
+
+        (
+          SELECT COUNT(*)
+          FROM follows f
+          WHERE f.follower_id = u.id
+        )::int AS following_count,
+
+        EXISTS (
+          SELECT 1
+          FROM follows f
+          WHERE f.follower_id = $2
+            AND f.following_id = u.id
+        ) AS viewer_following
+
+       FROM users u
+       WHERE u.username = $1`,
+      [username, req.user?.id || null]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Profile not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      profile: result.rows[0]
+    });
+  } catch (error) {
+    console.error("Public profile error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not load profile"
+    });
+  }
+});
+
+/*
+ * PUT /api/profile/:username/follow
+ */
+router.put("/:username/follow", requireAuth, async (req, res) => {
+  try {
+    const username = String(req.params.username || "").trim().toLowerCase();
+
+    const target = await query(
+      `SELECT id, username
+       FROM users
+       WHERE username = $1`,
+      [username]
+    );
+
+    if (target.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Profile not found"
+      });
+    }
+
+    const targetId = target.rows[0].id;
+
+    if (targetId === req.user.id) {
+      return res.status(400).json({
+        success: false,
+        error: "You cannot follow yourself"
+      });
+    }
+
+    await query(
+      `INSERT INTO follows
+        (follower_id, following_id)
+       VALUES ($1, $2)
+       ON CONFLICT (follower_id, following_id)
+       DO NOTHING`,
+      [req.user.id, targetId]
+    );
+
+    const count = await query(
+      `SELECT COUNT(*)::int AS followers_count
+       FROM follows
+       WHERE following_id = $1`,
+      [targetId]
+    );
+
+    res.json({
+      success: true,
+      following: true,
+      followers_count: count.rows[0].followers_count
+    });
+  } catch (error) {
+    console.error("Follow error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not follow user"
+    });
+  }
+});
+
+/*
+ * DELETE /api/profile/:username/follow
+ */
+router.delete("/:username/follow", requireAuth, async (req, res) => {
+  try {
+    const username = String(req.params.username || "").trim().toLowerCase();
+
+    const target = await query(
+      `SELECT id
+       FROM users
+       WHERE username = $1`,
+      [username]
+    );
+
+    if (target.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Profile not found"
+      });
+    }
+
+    const targetId = target.rows[0].id;
+
+    const removed = await query(
+      `DELETE FROM follows
+       WHERE follower_id = $1
+         AND following_id = $2
+       RETURNING id`,
+      [req.user.id, targetId]
+    );
+
+    const count = await query(
+      `SELECT COUNT(*)::int AS followers_count
+       FROM follows
+       WHERE following_id = $1`,
+      [targetId]
+    );
+
+    res.json({
+      success: true,
+      following: false,
+      removed: removed.rows.length > 0,
+      followers_count: count.rows[0].followers_count
+    });
+  } catch (error) {
+    console.error("Unfollow error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not unfollow user"
     });
   }
 });

@@ -419,6 +419,18 @@ function renderProfile() {
   );
 
   document.getElementById(
+    "profileFollowersCount"
+  ).textContent = Number(
+    state.user.followers_count || 0
+  );
+
+  document.getElementById(
+    "profileFollowingCount"
+  ).textContent = Number(
+    state.user.following_count || 0
+  );
+
+  document.getElementById(
     "profileAvatar"
   ).textContent = name
     .charAt(0)
@@ -583,6 +595,187 @@ document
   .addEventListener("click", logout);
 
 /* --------------------------------
+   PUBLIC PROFILE + FOLLOW
+-------------------------------- */
+
+let activePublicProfile = null;
+
+async function showPublicProfile(username) {
+  username = String(username || "").trim().toLowerCase();
+
+  if (!username) return;
+
+  try {
+    const data = await api(
+      `/api/profile/${encodeURIComponent(username)}`
+    );
+
+    if (!data.success || !data.profile) {
+      throw new Error("Profile not found.");
+    }
+
+    activePublicProfile = data.profile;
+
+    hide(homeScreen);
+    hide(authScreen);
+    hide(profileScreen);
+
+    let screen = document.getElementById("publicProfileScreen");
+
+    if (!screen) {
+      screen = document.createElement("section");
+      screen.id = "publicProfileScreen";
+      screen.className = "screen public-profile-screen";
+
+      screen.innerHTML = `
+        <header class="profile-topbar">
+          <button id="publicProfileBack" type="button">←</button>
+          <strong>Profile</strong>
+          <span></span>
+        </header>
+
+        <main class="profile-content">
+          <div class="profile-header">
+            <div class="profile-avatar" id="publicProfileAvatar">V</div>
+
+            <div class="profile-main">
+              <h1 id="publicProfileDisplayName">VYBER</h1>
+              <p id="publicProfileUsername">@username</p>
+              <p id="publicProfileBio"></p>
+            </div>
+          </div>
+
+          <div class="profile-stats">
+            <div>
+              <strong id="publicProfilePostsCount">0</strong>
+              <span>Posts</span>
+            </div>
+
+            <div>
+              <strong id="publicProfileFollowersCount">0</strong>
+              <span>Followers</span>
+            </div>
+
+            <div>
+              <strong id="publicProfileFollowingCount">0</strong>
+              <span>Following</span>
+            </div>
+          </div>
+
+          <button
+            id="publicProfileFollowButton"
+            class="profile-edit-button"
+            type="button"
+          >
+            Follow
+          </button>
+
+          <div id="publicProfilePostsEmpty" class="profile-empty">
+            <div>✦</div>
+            <h2>No posts yet</h2>
+            <p>This VYBER hasn't posted anything yet.</p>
+          </div>
+        </main>
+      `;
+
+      document.body.appendChild(screen);
+
+      document
+        .getElementById("publicProfileBack")
+        .addEventListener("click", () => {
+          screen.remove();
+          showHome();
+        });
+
+      document
+        .getElementById("publicProfileFollowButton")
+        .addEventListener("click", togglePublicProfileFollow);
+    }
+
+    renderPublicProfile(activePublicProfile);
+    show(screen);
+
+  } catch (error) {
+    alert(error.message || "Could not load profile.");
+  }
+}
+
+function renderPublicProfile(profile) {
+  const name =
+    profile.display_name ||
+    profile.username ||
+    "VYBER";
+
+  document.getElementById("publicProfileDisplayName").textContent =
+    name;
+
+  document.getElementById("publicProfileUsername").textContent =
+    `@${profile.username}`;
+
+  document.getElementById("publicProfileBio").textContent =
+    profile.bio || "";
+
+  document.getElementById("publicProfileAvatar").textContent =
+    name.charAt(0).toUpperCase();
+
+  document.getElementById("publicProfilePostsCount").textContent =
+    Number(profile.posts_count || 0);
+
+  document.getElementById("publicProfileFollowersCount").textContent =
+    Number(profile.followers_count || 0);
+
+  document.getElementById("publicProfileFollowingCount").textContent =
+    Number(profile.following_count || 0);
+
+  const button =
+    document.getElementById("publicProfileFollowButton");
+
+  const isMe =
+    state.user &&
+    state.user.id === profile.id;
+
+  button.hidden = Boolean(isMe);
+
+  if (!isMe) {
+    button.textContent =
+      profile.viewer_following ? "Following" : "Follow";
+  }
+}
+
+async function togglePublicProfileFollow() {
+  if (!activePublicProfile) return;
+
+  const button =
+    document.getElementById("publicProfileFollowButton");
+
+  const username = activePublicProfile.username;
+  const following = Boolean(activePublicProfile.viewer_following);
+
+  button.disabled = true;
+
+  try {
+    const data = await api(
+      `/api/profile/${encodeURIComponent(username)}/follow`,
+      {
+        method: following ? "DELETE" : "PUT"
+      }
+    );
+
+    activePublicProfile = {
+      ...activePublicProfile,
+      viewer_following: data.following,
+      followers_count: data.followers_count
+    };
+
+    renderPublicProfile(activePublicProfile);
+  } catch (error) {
+    alert(error.message || "Could not update follow.");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+/* --------------------------------
    POSTS SYSTEM
 -------------------------------- */
 
@@ -648,15 +841,23 @@ function renderPosts(posts) {
       state.user.id === post.user_id;
 
     const reactionCount =
-      Number(post.reaction_count || 0);
+  Number(post.reaction_count || 0);
 
-    const isLiked =
-      post.viewer_reaction === "like";
+const reactionCounts =
+  post.reaction_counts || {};
+
+const viewerReaction =
+  post.viewer_reaction || null;
 
     return `
       <article
         class="post-card"
         data-post-id="${escapeHtml(post.id)}"
+        data-viewer-reaction="${escapeHtml(viewerReaction || "")}"
+        data-viewer-reposted="${post.viewer_reposted ? "true" : "false"}"
+        data-repost-count="${Number(post.repost_count) || 0}"
+        data-viewer-saved="${post.viewer_saved ? "true" : "false"}"
+        data-save-count="${Number(post.save_count) || 0}"
       >
 
         <div class="post-author">
@@ -666,12 +867,15 @@ function renderPosts(posts) {
           </div>
 
           <div class="post-author-info">
-            <strong>
+            <strong class="post-author-name">
               ${escapeHtml(name)}
               ${post.is_verified ? " ✓" : ""}
             </strong>
 
-            <span>
+            <span
+              class="post-author-username"
+              data-username="${escapeHtml(post.username)}"
+            >
               @${escapeHtml(post.username)}
               · ${escapeHtml(date)}
             </span>
@@ -697,49 +901,211 @@ function renderPosts(posts) {
         <div class="post-content">
           ${escapeHtml(post.content)}
         </div>
+   
+        <div
+          class="post-comments-trigger"
+          data-comment-post="${escapeHtml(post.id)}"
+          role="button"
+          tabindex="0"
+          aria-label="View comments"
+        >
+          <span class="comments-trigger-icon">💬</span>
+          <span class="comments-trigger-text">
+            View comments
+          </span>
+          <span
+            class="comment-count"
+            data-comment-count="${escapeHtml(post.id)}"
+          >
+            0
+          </span>
+        </div>
 
         <div class="post-actions">
 
-          <button
-            class="reaction-button ${isLiked ? "reacted" : ""}"
-            data-reaction-post="${escapeHtml(post.id)}"
-            data-reaction-active="${isLiked ? "true" : "false"}"
-            type="button"
-            aria-label="${isLiked ? "Unlike post" : "Like post"}"
-            aria-pressed="${isLiked ? "true" : "false"}"
+          <div
+            class="reaction-summary"
+            data-reaction-summary="${escapeHtml(post.id)}"
+            aria-label="Post reactions"
           >
-            <span class="reaction-icon">
-              ${isLiked ? "♥" : "♡"}
-            </span>
+            ${
+              Object.entries(reactionCounts)
+                .filter(([, count]) => Number(count) > 0)
+                .sort((a, b) => Number(b[1]) - Number(a[1]))
+                .map(([type, count]) => `
+                  <span
+                    class="reaction-summary-item ${
+                      viewerReaction === type
+                        ? "viewer-reacted"
+                        : ""
+                    }"
+                    aria-label="${escapeHtml(type)} ${Number(count)}"
+                  >
+                    <span class="reaction-summary-icon">
+                      ${getReactionIcon(type)}
+                    </span>
+                    <span class="reaction-summary-count">
+                      ${Number(count)}
+                    </span>
+                  </span>
+                `)
+                .join("")
+            }
+          </div>
 
-            <span
-              class="reaction-count"
-              data-reaction-count="${escapeHtml(post.id)}"
+          <div class="post-action-right">
+
+            <button
+              class="repost-button"
+              type="button"
+              aria-label="Repost"
+              aria-pressed="${
+                post.viewer_reposted ? "true" : "false"
+              }"
+              data-repost-post="${escapeHtml(post.id)}"
             >
-              ${reactionCount}
-            </span>
-          </button>
+              <span class="action-icon">🔄</span>
+              <span class="action-label">
+                Repost${
+                  Number(post.repost_count) > 0
+                    ? ` ${Number(post.repost_count)}`
+                    : ""
+                }
+              </span>
+            </button>
 
-          <button
-            class="comments-button"
-            type="button"
-            aria-label="Comments"
-            data-comment-post="${escapeHtml(post.id)}"
-          >
-            💬
-            <span class="comment-count" data-comment-count="${escapeHtml(post.id)}">0</span>
-          </button>
+            <button
+              class="share-button"
+              type="button"
+              aria-label="Share post"
+              data-share-post="${escapeHtml(post.id)}"
+            >
+              <span class="action-icon">↗</span>
+              <span class="action-label">Share</span>
+            </button>
 
-          <button
-            type="button"
-            aria-label="Share"
+          </div>
+
+          <div
+            class="post-action-menu hidden"
+            data-action-menu="${escapeHtml(post.id)}"
+            role="menu"
+            aria-label="Post actions"
           >
-            ↗
-          </button>
+
+            <div class="menu-quick-reactions">
+
+              ${
+                QUICK_REACTIONS.map(reaction => `
+                  <button
+                    type="button"
+                    class="menu-reaction-button"
+                    data-menu-reaction="${escapeHtml(reaction.type)}"
+                    aria-label="${escapeHtml(reaction.label)}"
+                    aria-pressed="false"
+                    title="${escapeHtml(reaction.label)}"
+                  >
+                    ${reaction.icon}
+                  </button>
+                `).join("")
+              }
+
+              <button
+                type="button"
+                class="menu-more-reactions"
+                data-menu-more-reactions
+                aria-expanded="false"
+                aria-label="More reactions"
+                title="More reactions"
+              >
+                +
+              </button>
+
+            </div>
+
+            <div
+              class="menu-more-reactions-panel hidden"
+              data-more-reactions="${escapeHtml(post.id)}"
+            >
+              ${
+                ALL_REACTIONS.map(reaction => `
+                  <button
+                    type="button"
+                    class="menu-reaction-button menu-reaction-full"
+                    data-menu-reaction="${escapeHtml(reaction.type)}"
+                    aria-label="${escapeHtml(reaction.label)}"
+                    aria-pressed="false"
+                    title="${escapeHtml(reaction.label)}"
+                  >
+                    <span>${reaction.icon}</span>
+                    <small>${escapeHtml(reaction.label)}</small>
+                  </button>
+                `).join("")
+              }
+            </div>
+
+            <div class="post-menu-divider"></div>
+
+            <div class="post-menu-list">
+
+              <button
+                type="button"
+                class="post-menu-item"
+                data-menu-save="${escapeHtml(post.id)}"
+                role="menuitem"
+              >
+                <span class="menu-item-icon">🔖</span>
+                <span class="menu-item-text">
+                  ${post.viewer_saved ? "Saved" : "Save"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="post-menu-item"
+                data-menu-repost="${escapeHtml(post.id)}"
+                role="menuitem"
+              >
+                <span class="menu-item-icon">🔄</span>
+                <span class="menu-item-text">Repost</span>
+              </button>
+
+              <button
+                type="button"
+                class="post-menu-item"
+                data-menu-share="${escapeHtml(post.id)}"
+                role="menuitem"
+              >
+                <span class="menu-item-icon">↗</span>
+                <span class="menu-item-text">Share</span>
+              </button>
+
+              <button
+                type="button"
+                class="post-menu-item"
+                data-menu-copy="${escapeHtml(post.id)}"
+                role="menuitem"
+              >
+                <span class="menu-item-icon">📋</span>
+                <span class="menu-item-text">Copy</span>
+              </button>
+
+              <button
+                type="button"
+                class="post-menu-item"
+                data-menu-copy-link="${escapeHtml(post.id)}"
+                role="menuitem"
+              >
+                <span class="menu-item-icon">🔗</span>
+                <span class="menu-item-text">Copy link</span>
+              </button>
+
+            </div>
+          </div>
 
         </div>
 
-      </article>
+   </article>
     `;
   }).join("");
 
@@ -749,15 +1115,6 @@ function renderPosts(posts) {
       button.addEventListener(
         "click",
         () => deletePost(button.dataset.deletePost)
-      );
-    });
-
-  postsFeed
-    .querySelectorAll("[data-reaction-post]")
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        () => toggleReaction(button.dataset.reactionPost, button)
       );
     });
 
@@ -778,6 +1135,8 @@ function renderPosts(posts) {
         button
       );
     });
+
+  setupPostInteractions();
 }
 
 
@@ -1214,31 +1573,213 @@ async function deleteComment(
 }
 
 
-async function toggleReaction(postId, button) {
+
+function getReactionIcon(type) {
+  const icons = {
+    like: "❤️",
+    love: "🥰",
+    laugh: "😂",
+    wow: "😮",
+    sad: "😢",
+    angry: "😡"
+  };
+
+  return icons[type] || "❤️";
+}
+
+
+const QUICK_REACTIONS = [
+  { type: "like",  icon: "❤️", label: "Like" },
+  { type: "laugh", icon: "😂", label: "Laugh" },
+  { type: "laugh", icon: "😁", label: "Grin" },
+  { type: "love",  icon: "😍", label: "Love" },
+  { type: "sad",   icon: "😭", label: "Sad" }
+];
+
+const ALL_REACTIONS = [
+  { type: "like",  icon: "❤️", label: "Like" },
+  { type: "love",  icon: "🥰", label: "Love" },
+  { type: "laugh", icon: "😂", label: "Laugh" },
+  { type: "wow",   icon: "😮", label: "Wow" },
+  { type: "sad",   icon: "😢", label: "Sad" },
+  { type: "angry", icon: "😡", label: "Angry" }
+];
+
+const DOUBLE_TAP_MS = 280;
+const DOUBLE_TAP_DISTANCE = 28;
+
+let activePostActionMenu = null;
+let tapTimer = null;
+let lastTap = {
+  postId: null,
+  time: 0,
+  x: 0,
+  y: 0
+};
+
+
+function getPostCard(postId) {
+  return document.querySelector(
+    `.post-card[data-post-id="${CSS.escape(postId)}"]`
+  );
+}
+
+
+function closeAllPostActionMenus() {
+  document
+    .querySelectorAll(".post-action-menu.menu-visible")
+    .forEach(menu => {
+      menu.classList.remove("menu-visible");
+      menu.classList.add("hidden");
+    });
+
+  activePostActionMenu = null;
+}
+
+
+function closePostActionMenu(postId) {
+  const card = getPostCard(postId);
+
+  if (!card) return;
+
+  const menu = card.querySelector(
+    `[data-action-menu="${CSS.escape(postId)}"]`
+  );
+
+  if (!menu) return;
+
+  menu.classList.remove("menu-visible");
+  menu.classList.add("hidden");
+
+  if (activePostActionMenu === postId) {
+    activePostActionMenu = null;
+  }
+}
+
+
+function openPostActionMenu(postId) {
+  closeAllPostActionMenus();
+
+  const card = getPostCard(postId);
+  if (!card) return;
+
+  const menu = card.querySelector(
+    `[data-action-menu="${CSS.escape(postId)}"]`
+  );
+
+  if (!menu) return;
+
+  menu.classList.remove("hidden");
+
+  requestAnimationFrame(() => {
+    menu.classList.add("menu-visible");
+  });
+
+  activePostActionMenu = postId;
+}
+
+
+function updateReactionUI(
+  postId,
+  reactionCounts = {},
+  viewerReaction = null
+) {
+  const card = getPostCard(postId);
+
+  if (!card) return;
+
+  const summary = card.querySelector(
+    "[data-reaction-summary]"
+  );
+
+  if (summary) {
+    const entries = Object.entries(reactionCounts)
+      .filter(([, count]) => Number(count) > 0)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 4);
+
+    summary.innerHTML = entries.map(
+      ([type, count]) => `
+        <span
+          class="reaction-summary-item ${
+            viewerReaction === type ? "viewer-reacted" : ""
+          }"
+          aria-label="${escapeHtml(type)} ${Number(count)}"
+        >
+          <span class="reaction-summary-icon">
+            ${getReactionIcon(type)}
+          </span>
+          <span class="reaction-summary-count">
+            ${Number(count)}
+          </span>
+        </span>
+      `
+    ).join("");
+  }
+
+  card.dataset.viewerReaction =
+    viewerReaction || "";
+
+  card
+    .querySelectorAll("[data-menu-reaction]")
+    .forEach(button => {
+      const reaction =
+        button.dataset.menuReaction;
+
+      button.classList.toggle(
+        "reaction-selected",
+        reaction === viewerReaction
+      );
+
+      button.setAttribute(
+        "aria-pressed",
+        reaction === viewerReaction
+          ? "true"
+          : "false"
+      );
+    });
+}
+
+
+async function setReaction(
+  postId,
+  reactionType
+) {
   if (!state.authenticated || !state.user) {
     alert("Please log in to react to posts.");
-    return;
+    return false;
   }
 
-  if (button.disabled) {
-    return;
-  }
+  const card = getPostCard(postId);
 
-  const isActive =
-    button.dataset.reactionActive === "true";
+  if (!card) return false;
 
-  button.disabled = true;
-  button.classList.add("reaction-loading");
+  const buttons = card.querySelectorAll(
+    "[data-menu-reaction]"
+  );
+
+  buttons.forEach(button => {
+    button.disabled = true;
+  });
 
   try {
+    const currentReaction =
+      card.dataset.viewerReaction || "";
+
     let data;
 
-    if (isActive) {
+    if (currentReaction === reactionType) {
       data = await api(
         `/api/posts/${encodeURIComponent(postId)}/reaction`,
         {
           method: "DELETE"
         }
+      );
+
+      updateReactionUI(
+        postId,
+        data.reaction_counts || {},
+        null
       );
     } else {
       data = await api(
@@ -1246,9 +1787,15 @@ async function toggleReaction(postId, button) {
         {
           method: "PUT",
           body: JSON.stringify({
-            reaction: "like"
+            reaction: reactionType
           })
         }
+      );
+
+      updateReactionUI(
+        postId,
+        data.reaction_counts || {},
+        reactionType
       );
     }
 
@@ -1258,41 +1805,9 @@ async function toggleReaction(postId, button) {
       );
     }
 
-    const nowActive = !isActive;
+    closePostActionMenu(postId);
 
-    button.dataset.reactionActive =
-      nowActive ? "true" : "false";
-
-    button.classList.toggle(
-      "reacted",
-      nowActive
-    );
-
-    button.setAttribute(
-      "aria-pressed",
-      nowActive ? "true" : "false"
-    );
-
-    button.setAttribute(
-      "aria-label",
-      nowActive ? "Unlike post" : "Like post"
-    );
-
-    const icon =
-      button.querySelector(".reaction-icon");
-
-    if (icon) {
-      icon.textContent =
-        nowActive ? "♥" : "♡";
-    }
-
-    const count =
-      button.querySelector(".reaction-count");
-
-    if (count) {
-      count.textContent =
-        String(data.reaction_count ?? 0);
-    }
+    return true;
 
   } catch (error) {
     console.error("Reaction error:", error);
@@ -1302,11 +1817,656 @@ async function toggleReaction(postId, button) {
       "Could not update reaction."
     );
 
+    return false;
+
   } finally {
-    button.disabled = false;
-    button.classList.remove("reaction-loading");
+    buttons.forEach(button => {
+      button.disabled = false;
+    });
   }
 }
+
+
+async function toggleRepost(postId) {
+  if (!state.authenticated || !state.user) {
+    alert("Please log in to repost posts.");
+    return;
+  }
+
+  const card = getPostCard(postId);
+
+  if (!card) return;
+
+  const button = card.querySelector(
+    `[data-repost-post="${CSS.escape(postId)}"]`
+  );
+
+  const alreadyReposted =
+    card.dataset.viewerReposted === "true";
+
+  if (button) button.disabled = true;
+
+  try {
+    const method = alreadyReposted
+      ? "DELETE"
+      : "PUT";
+
+    const data = await api(
+      `/api/posts/${encodeURIComponent(postId)}/repost`,
+      { method }
+    );
+
+    if (!data.success) {
+      throw new Error(
+        data.error || "Could not update repost."
+      );
+    }
+
+    card.dataset.viewerReposted =
+      data.reposted ? "true" : "false";
+
+    const count =
+      Number(data.repost_count) || 0;
+
+    card.dataset.repostCount =
+      String(count);
+
+    if (button) {
+      button.classList.toggle(
+        "action-active",
+        data.reposted
+      );
+
+      button.setAttribute(
+        "aria-pressed",
+        data.reposted ? "true" : "false"
+      );
+
+      button.innerHTML = `
+        <span class="action-icon">🔄</span>
+        <span class="action-label">
+          Repost${count > 0 ? ` ${count}` : ""}
+        </span>
+      `;
+    }
+
+    closePostActionMenu(postId);
+
+  } catch (error) {
+    console.error("Repost error:", error);
+
+    alert(
+      error.message ||
+      "Could not repost post."
+    );
+
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+
+async function toggleSave(postId) {
+  if (!state.authenticated || !state.user) {
+    alert("Please log in to save posts.");
+    return;
+  }
+
+  const card = getPostCard(postId);
+
+  if (!card) return;
+
+  const alreadySaved =
+    card.dataset.viewerSaved === "true";
+
+  const menuSave =
+    card.querySelector(
+      `[data-menu-save="${CSS.escape(postId)}"]`
+    );
+
+  if (menuSave) menuSave.disabled = true;
+
+  try {
+    const method = alreadySaved
+      ? "DELETE"
+      : "PUT";
+
+    const data = await api(
+      `/api/posts/${encodeURIComponent(postId)}/save`,
+      { method }
+    );
+
+    if (!data.success) {
+      throw new Error(
+        data.error || "Could not update save."
+      );
+    }
+
+    card.dataset.viewerSaved =
+      data.saved ? "true" : "false";
+
+    const count =
+      Number(data.save_count) || 0;
+
+    card.dataset.saveCount =
+      String(count);
+
+    if (menuSave) {
+      menuSave.classList.toggle(
+        "menu-item-active",
+        data.saved
+      );
+
+      menuSave.innerHTML = `
+        <span class="menu-item-icon">
+          ${data.saved ? "🔖" : "🔖"}
+        </span>
+        <span>
+          ${data.saved ? "Saved" : "Save"}
+        </span>
+      `;
+    }
+
+    closePostActionMenu(postId);
+
+  } catch (error) {
+    console.error("Save error:", error);
+
+    alert(
+      error.message ||
+      "Could not update saved post."
+    );
+
+  } finally {
+    if (menuSave) menuSave.disabled = false;
+  }
+}
+
+
+async function sharePost(postId) {
+  const card = getPostCard(postId);
+
+  if (!card) return;
+
+  const username =
+    card.querySelector(".post-author-name")
+      ?.textContent
+      ?.trim() || "VYBE user";
+
+  const content =
+    card.querySelector(".post-content")
+      ?.textContent
+      ?.trim() || "";
+
+  const shareUrl =
+    `${window.location.origin}${window.location.pathname}?post=${encodeURIComponent(postId)}`;
+
+  const shareData = {
+    title: "VYBE",
+    text: `${username}: ${content}`,
+    url: shareUrl
+  };
+
+  try {
+    if (
+      navigator.share &&
+      typeof navigator.share === "function"
+    ) {
+      await navigator.share(shareData);
+      return;
+    }
+
+    if (
+      navigator.clipboard &&
+      typeof navigator.clipboard.writeText === "function"
+    ) {
+      await navigator.clipboard.writeText(shareUrl);
+      alert("Post link copied.");
+      return;
+    }
+
+    throw new Error(
+      "Sharing is not supported on this device."
+    );
+
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+
+    console.error("Share error:", error);
+
+    alert(
+      error.message ||
+      "Could not share post."
+    );
+  }
+}
+
+
+async function copyPostText(postId) {
+  const card = getPostCard(postId);
+  if (!card) return;
+
+  const content =
+    card.querySelector(".post-content")
+      ?.textContent
+      ?.trim() || "";
+
+  if (!content) {
+    alert("There is no text to copy.");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(content);
+    closePostActionMenu(postId);
+    alert("Post text copied.");
+  } catch (error) {
+    console.error("Copy error:", error);
+    alert("Could not copy post text.");
+  }
+}
+
+
+async function copyPostLink(postId) {
+  const shareUrl =
+    `${window.location.origin}${window.location.pathname}?post=${encodeURIComponent(postId)}`;
+
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    closePostActionMenu(postId);
+    alert("Post link copied.");
+  } catch (error) {
+    console.error("Copy link error:", error);
+    alert("Could not copy post link.");
+  }
+}
+
+
+function setupPostInteractions() {
+  const cards = document.querySelectorAll(
+    "[data-post-id]"
+  );
+
+  cards.forEach(card => {
+    if (card.dataset.interactionsReady === "true") {
+      return;
+    }
+
+    card.dataset.interactionsReady = "true";
+
+    const postId = card.dataset.postId;
+
+    const commentTrigger =
+      card.querySelector(
+        `[data-comment-post="${CSS.escape(postId)}"]`
+      );
+
+    const shareButton =
+      card.querySelector(
+        `[data-share-post="${CSS.escape(postId)}"]`
+      );
+
+    const repostButton =
+      card.querySelector(
+        `[data-repost-post="${CSS.escape(postId)}"]`
+      );
+
+    const content =
+      card.querySelector(".post-content");
+
+    if (commentTrigger) {
+      const open = () => openComments(postId);
+
+      commentTrigger.addEventListener(
+        "click",
+        open
+      );
+
+      commentTrigger.addEventListener(
+        "keydown",
+        event => {
+          if (
+            event.key === "Enter" ||
+            event.key === " "
+          ) {
+            event.preventDefault();
+            open();
+          }
+        }
+      );
+    }
+
+    if (shareButton) {
+      shareButton.addEventListener(
+        "click",
+        event => {
+          event.stopPropagation();
+          sharePost(postId);
+        }
+      );
+    }
+
+    if (repostButton) {
+      repostButton.addEventListener(
+        "click",
+        event => {
+          event.stopPropagation();
+          toggleRepost(postId);
+        }
+      );
+    }
+
+    card.querySelectorAll(
+      "[data-menu-reaction]"
+    ).forEach(button => {
+      button.addEventListener(
+        "click",
+        async event => {
+          event.stopPropagation();
+
+          await setReaction(
+            postId,
+            button.dataset.menuReaction
+          );
+        }
+      );
+    });
+
+    card.querySelectorAll(
+      "[data-menu-more-reactions]"
+    ).forEach(button => {
+      button.addEventListener(
+        "click",
+        event => {
+          event.stopPropagation();
+
+          const more =
+            card.querySelector(
+              `[data-more-reactions="${CSS.escape(postId)}"]`
+            );
+
+          if (!more) return;
+
+          const opened =
+            !more.classList.contains("hidden");
+
+          more.classList.toggle(
+            "hidden",
+            opened
+          );
+
+          button.setAttribute(
+            "aria-expanded",
+            opened ? "false" : "true"
+          );
+        }
+      );
+    });
+
+    card.querySelectorAll(
+      "[data-menu-save]"
+    ).forEach(button => {
+      button.addEventListener(
+        "click",
+        event => {
+          event.stopPropagation();
+          toggleSave(postId);
+        }
+      );
+    });
+
+    card.querySelectorAll(
+      "[data-menu-repost]"
+    ).forEach(button => {
+      button.addEventListener(
+        "click",
+        event => {
+          event.stopPropagation();
+          toggleRepost(postId);
+        }
+      );
+    });
+
+    card.querySelectorAll(
+      "[data-menu-share]"
+    ).forEach(button => {
+      button.addEventListener(
+        "click",
+        event => {
+          event.stopPropagation();
+          sharePost(postId);
+        }
+      );
+    });
+
+    card.querySelectorAll(
+      "[data-menu-copy]"
+    ).forEach(button => {
+      button.addEventListener(
+        "click",
+        event => {
+          event.stopPropagation();
+          copyPostText(postId);
+        }
+      );
+    });
+
+    card.querySelectorAll(
+      "[data-menu-copy-link]"
+    ).forEach(button => {
+      button.addEventListener(
+        "click",
+        event => {
+          event.stopPropagation();
+          copyPostLink(postId);
+        }
+      );
+    });
+
+    /*
+      Single tap = open menu.
+      Double tap = ❤️.
+      Long press is intentionally NOT used.
+    */
+    if (content) {
+      content.addEventListener(
+        "click",
+        event => {
+          event.stopPropagation();
+
+          const now = Date.now();
+
+          const dx =
+            event.clientX - lastTap.x;
+
+          const dy =
+            event.clientY - lastTap.y;
+
+          const distance =
+            Math.hypot(dx, dy);
+
+          const isDoubleTap =
+            lastTap.postId === postId &&
+            now - lastTap.time <= DOUBLE_TAP_MS &&
+            distance <= DOUBLE_TAP_DISTANCE;
+
+          if (isDoubleTap) {
+            if (tapTimer) {
+              clearTimeout(tapTimer);
+              tapTimer = null;
+            }
+
+            lastTap = {
+              postId: null,
+              time: 0,
+              x: 0,
+              y: 0
+            };
+
+            setReaction(postId, "like");
+            return;
+          }
+
+          lastTap = {
+            postId,
+            time: now,
+            x: event.clientX,
+            y: event.clientY
+          };
+
+          if (tapTimer) {
+            clearTimeout(tapTimer);
+          }
+
+          tapTimer = setTimeout(() => {
+            tapTimer = null;
+            openPostActionMenu(postId);
+          }, DOUBLE_TAP_MS);
+        }
+      );
+    }
+
+    const author =
+      card.querySelector(
+        ".post-author"
+      );
+
+    const authorName =
+      card.querySelector(
+        ".post-author-name"
+      );
+
+    const authorUsername =
+      card.querySelector(
+        ".post-author-username"
+      );
+
+    const openAuthorProfile = event => {
+      event.stopPropagation();
+
+      const username =
+        authorUsername?.dataset.username ||
+        authorUsername?.textContent
+          ?.replace(/^@/, "")
+          ?.trim() ||
+        "";
+
+      if (username) {
+        showPublicProfile(username);
+      }
+    };
+
+    if (authorName) {
+      authorName.addEventListener(
+        "click",
+        openAuthorProfile
+      );
+    }
+
+    if (author) {
+      const avatar =
+        author.querySelector(
+          ".post-avatar"
+        );
+
+      if (avatar) {
+        avatar.style.cursor = "pointer";
+
+        avatar.addEventListener(
+          "click",
+          openAuthorProfile
+        );
+      }
+    }
+
+    const viewerReaction =
+      card.dataset.viewerReaction || "";
+
+    const viewerReposted =
+      card.dataset.viewerReposted === "true";
+
+    const viewerSaved =
+      card.dataset.viewerSaved === "true";
+
+    card.querySelectorAll(
+      "[data-menu-reaction]"
+    ).forEach(button => {
+      const reaction =
+        button.dataset.menuReaction;
+
+      button.classList.toggle(
+        "reaction-selected",
+        reaction === viewerReaction
+      );
+
+      button.setAttribute(
+        "aria-pressed",
+        reaction === viewerReaction
+          ? "true"
+          : "false"
+      );
+    });
+
+    const saveButton =
+      card.querySelector(
+        `[data-menu-save="${CSS.escape(postId)}"]`
+      );
+
+    if (saveButton) {
+      saveButton.classList.toggle(
+        "menu-item-active",
+        viewerSaved
+      );
+
+      saveButton.innerHTML = `
+        <span class="menu-item-icon">🔖</span>
+        <span>${viewerSaved ? "Saved" : "Save"}</span>
+      `;
+    }
+
+    const repostButtonState =
+      card.querySelector(
+        `[data-repost-post="${CSS.escape(postId)}"]`
+      );
+
+    if (repostButtonState) {
+      const repostCount =
+        Number(card.dataset.repostCount) || 0;
+
+      repostButtonState.classList.toggle(
+        "action-active",
+        viewerReposted
+      );
+
+      repostButtonState.setAttribute(
+        "aria-pressed",
+        viewerReposted
+          ? "true"
+          : "false"
+      );
+
+      repostButtonState.innerHTML = `
+        <span class="action-icon">🔄</span>
+        <span class="action-label">
+          Repost${repostCount > 0 ? ` ${repostCount}` : ""}
+        </span>
+      `;
+    }
+  });
+}
+
+
+document.addEventListener(
+  "click",
+  event => {
+    if (
+      !event.target.closest(".post-action-menu") &&
+      !event.target.closest(".post-content")
+    ) {
+      closeAllPostActionMenus();
+    }
+  }
+);
 
 
 function openCreatePost() {
