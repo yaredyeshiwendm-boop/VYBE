@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#050505">
   <title>VYBE</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=2">
 </head>
 
 <body>
@@ -183,15 +183,6 @@
 
       <main class="home-content">
 
-        <div class="welcome-card">
-          <div class="welcome-avatar" id="welcomeAvatar">V</div>
-
-          <div>
-            <span>Welcome back</span>
-            <strong id="welcomeName">VYBER</strong>
-          </div>
-        </div>
-
         <!-- STORIES -->
         <section class="stories-section" aria-label="Stories">
           <div class="stories-header">
@@ -211,15 +202,6 @@
             aria-live="polite"
           ></div>
         </section>
-
-        <div class="empty-feed">
-          <div class="empty-icon">✦</div>
-          <h2>Your VYBE starts here.</h2>
-          <p>Posts, stories, challenges and chains are coming next.</p>
-          <button id="createFirstPost" class="primary-button" type="button">
-            Create your first VYBE
-          </button>
-        </div>
 
       </main>
 
@@ -448,34 +430,61 @@
 
 <!-- STORY VIEWER -->
 <div id="storyViewer" class="story-viewer hidden">
-  <button
-    id="closeStoryViewer"
-    class="story-viewer-close"
-    type="button"
-    aria-label="Close story"
-  >
-    ×
-  </button>
 
-  <button
-    id="previousStory"
-    class="story-viewer-nav previous"
-    type="button"
-    aria-label="Previous story"
-  >
-    ‹
-  </button>
+  <div class="story-progress" id="storyProgress"></div>
+
+  <div class="story-viewer-top">
+    <button
+      id="closeStoryViewer"
+      class="story-viewer-close"
+      type="button"
+      aria-label="Close story"
+    >×</button>
+
+    <div id="storyViewerUser" class="story-viewer-user"></div>
+
+    <button
+      id="storyDeleteButton"
+      class="story-delete-button hidden"
+      type="button"
+      aria-label="Delete story"
+    >⋯</button>
+  </div>
 
   <div id="storyViewerContent" class="story-viewer-content"></div>
 
-  <button
-    id="nextStory"
-    class="story-viewer-nav next"
-    type="button"
-    aria-label="Next story"
-  >
-    ›
-  </button>
+  <div class="story-tap-zone story-tap-left" id="storyTapLeft"></div>
+  <div class="story-tap-zone story-tap-right" id="storyTapRight"></div>
+
+  <div class="story-viewer-bottom">
+    <button
+      id="storyLikeButton"
+      class="story-like-button"
+      type="button"
+      aria-label="Like story"
+    >♡</button>
+
+    <div id="storyReactionPicker" class="story-reaction-picker hidden">
+      <button type="button" data-reaction="❤️">❤️</button>
+      <button type="button" data-reaction="😂">😂</button>
+      <button type="button" data-reaction="😮">😮</button>
+      <button type="button" data-reaction="😢">😢</button>
+      <button type="button" data-reaction="😡">😡</button>
+      <button type="button" data-reaction="👍">👍</button>
+    </div>
+
+    <button
+      id="storyReplyButton"
+      class="story-action-button"
+      type="button"
+    >Reply</button>
+
+    <button
+      id="storyShareButton"
+      class="story-action-button"
+      type="button"
+    >Share</button>
+  </div>
 </div>
 
 <div id="createPostModal" class="modal hidden">
@@ -607,7 +616,7 @@
     </section>
   </div>
 
-  <script src="/js/app.js"></script>
+  <script src="/js/app.js?v=3"></script>
 
 </body>
 </html>

@@ -77,23 +77,8 @@ function showHome() {
 
   show(homeScreen);
 
-  updateHome();
   loadStories();
   loadPosts();
-}
-
-function updateHome() {
-  if (!state.user) return;
-
-  const name =
-    state.user.display_name ||
-    state.user.username ||
-    "VYBER";
-
-  $("#welcomeName").textContent = name;
-
-  $("#welcomeAvatar").textContent =
-    name.charAt(0).toUpperCase();
 }
 
 function switchToRegister() {
@@ -141,17 +126,34 @@ async function api(url, options = {}) {
 
 async function checkSession() {
   try {
-    const data = await api("/api/auth/me");
+    console.log("[VYBE AUTH] checking session", {
+      origin: window.location.origin,
+      cookiesEnabled: navigator.cookieEnabled
+    });
 
-    if (data.success && data.user) {
+    const response = await fetch("/api/auth/me", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store"
+    });
+
+    const data = await response.json();
+
+    console.log("[VYBE AUTH] /api/auth/me", {
+      status: response.status,
+      success: data.success,
+      hasUser: !!data.user
+    });
+
+    if (response.ok && data.success && data.user) {
       state.user = data.user;
       state.authenticated = true;
       loadActivityNotifications();
       showHome();
       return true;
     }
-  } catch {
-    // Not authenticated.
+  } catch (error) {
+    console.error("[VYBE AUTH] session check failed:", error);
   }
 
   state.user = null;
@@ -559,7 +561,6 @@ async function saveProfile(event) {
     };
 
     renderProfile();
-    updateHome();
 
     closeEditProfile();
   } catch (error) {
@@ -2965,9 +2966,15 @@ document.addEventListener(
 
 function getMediaUrl(url) {
   if (!url) return "";
-  return url.startsWith("http")
-    ? url
-    : window.location.origin + url;
+
+  try {
+    return new URL(
+      String(url),
+      window.location.origin
+    ).href;
+  } catch {
+    return "";
+  }
 }
 
 async function loadStories() {
@@ -3050,7 +3057,22 @@ function renderStories() {
         aria-label="View ${escapeHtml(name)}'s story"
       >
         <span class="story-avatar">
-          ${escapeHtml(initial)}
+          ${
+            story.url
+              ? story.media_type === "video"
+                ? `<video
+                     class="story-thumbnail"
+                     src="${escapeHtml(getMediaUrl(story.url))}"
+                     muted
+                     playsinline
+                   ></video>`
+                : `<img
+                     class="story-thumbnail"
+                     src="${escapeHtml(getMediaUrl(story.url))}"
+                     alt=""
+                   >`
+              : escapeHtml(initial)
+          }
         </span>
 
         <span class="story-name">
@@ -3197,62 +3219,165 @@ function openStoryByUser(userId) {
 
   if (index < 0) return;
 
+  const story = state.stories[index];
+
+  // /api/stories returns media fields directly on the story row.
+  if (!story.url) {
+    console.error("Story media URL missing:", story);
+    return;
+  }
+
   state.activeStoryIndex = index;
   renderActiveStory();
 }
 
+let storyTimer = null;
+let storyPaused = false;
+let storyHoldStart = 0;
+let storyTouchStartX = 0;
+let storyTouchStartY = 0;
+
+function clearStoryTimer() {
+  if (storyTimer) {
+    clearTimeout(storyTimer);
+    storyTimer = null;
+  }
+}
+
+function buildStoryProgress() {
+  const el = document.getElementById("storyProgress");
+  if (!el) return;
+
+  el.innerHTML = state.stories.map((_, i) => `
+    <div class="story-progress-segment ${i < state.activeStoryIndex ? "done" : ""}">
+      <div class="story-progress-fill"></div>
+    </div>
+  `).join("");
+}
+
+function startStoryProgress(duration) {
+  const el = document.getElementById("storyProgress");
+  if (!el) return;
+
+  const segments = el.querySelectorAll(".story-progress-segment");
+  const current = segments[state.activeStoryIndex];
+  const fill = current?.querySelector(".story-progress-fill");
+
+  if (!fill) return;
+
+  fill.style.transition = "none";
+  fill.style.width = "0%";
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      fill.style.transition = `width ${duration}ms linear`;
+      fill.style.width = "100%";
+    });
+  });
+}
+
 async function renderActiveStory() {
-  const story =
-    state.stories[state.activeStoryIndex];
+  clearStoryTimer();
 
-  if (!story) return;
+  const story = state.stories[state.activeStoryIndex];
+  if (!story) {
+    closeStoryViewer();
+    return;
+  }
 
-  const viewer =
-    document.getElementById("storyViewer");
+  storyPaused = false;
 
-  const content =
-    document.getElementById("storyViewerContent");
+  const viewer = document.getElementById("storyViewer");
+  const content = document.getElementById("storyViewerContent");
+  const userBox = document.getElementById("storyViewerUser");
+  const deleteButton = document.getElementById("storyDeleteButton");
+  const likeButton = document.getElementById("storyLikeButton");
 
-  const media = story.media || {};
-  const url = getMediaUrl(media.url);
+  buildStoryProgress();
 
-  const name =
-    story.display_name ||
-    story.username ||
-    "VYBER";
+  viewer.classList.remove("paused");
 
-  content.innerHTML = `
-    <div class="story-viewer-header">
-      <strong>${escapeHtml(name)}</strong>
-      <span>@${escapeHtml(story.username || "")}</span>
-    </div>
+  if (userBox) {
+    userBox.textContent =
+      story.display_name || story.username || "VYBER";
+  }
 
-    <div class="story-viewer-media">
-      ${
-        media.media_type === "video"
-          ? `<video
-               src="${escapeHtml(url)}"
-               controls
-               autoplay
-               playsinline
-             ></video>`
-          : `<img
-               src="${escapeHtml(url)}"
-               alt="${escapeHtml(name)}'s story"
-             >`
+  if (deleteButton) {
+    deleteButton.classList.toggle(
+      "hidden",
+      String(story.user_id) !== String(state.user?.id)
+    );
+  }
+
+  if (likeButton) {
+    likeButton.textContent = story.viewer_reaction || "♡";
+  }
+
+  content.innerHTML = "";
+
+  const mediaWrap = document.createElement("div");
+  mediaWrap.className = "story-viewer-media";
+
+  const url = getMediaUrl(story.url);
+  let media;
+  let duration = 5000;
+
+  if (
+    story.media_type === "video" ||
+    String(story.mime_type || "").startsWith("video/")
+  ) {
+    media = document.createElement("video");
+    media.src = url;
+    media.autoplay = true;
+    media.playsInline = true;
+    media.controls = false;
+    media.preload = "auto";
+
+    media.addEventListener("loadedmetadata", () => {
+      if (Number.isFinite(media.duration) && media.duration > 0) {
+        duration = media.duration * 1000;
+        startStoryProgress(duration);
+        clearStoryTimer();
+
+        if (!storyPaused) {
+          storyTimer = setTimeout(() => {
+            if (!storyPaused) showNextStory();
+          }, duration);
+        }
       }
-    </div>
+    });
 
-    ${
-      story.caption
-        ? `<p class="story-viewer-caption">
-             ${escapeHtml(story.caption)}
-           </p>`
-        : ""
-    }
-  `;
+    media.addEventListener("ended", () => {
+      if (!storyPaused) showNextStory();
+    });
+  } else {
+    media = document.createElement("img");
+    media.src = url;
+    media.alt = `${story.display_name || story.username || "VYBER"}'s story`;
+    duration = 5000;
+  }
+
+  mediaWrap.appendChild(media);
+  content.appendChild(mediaWrap);
+
+  if (story.caption) {
+    const caption = document.createElement("p");
+    caption.className = "story-viewer-caption";
+    caption.textContent = story.caption;
+    content.appendChild(caption);
+  }
 
   show(viewer);
+
+  if (
+    story.media_type !== "video" &&
+    !String(story.mime_type || "").startsWith("video/")
+  ) {
+    startStoryProgress(5000);
+    storyTimer = setTimeout(() => {
+      if (!storyPaused) showNextStory();
+    }, 5000);
+  }
 
   try {
     if (!story.viewer_viewed) {
@@ -3265,16 +3390,64 @@ async function renderActiveStory() {
       renderStories();
     }
   } catch (error) {
-    console.error(error);
+    console.error("Story view error:", error);
+  }
+}
+
+function pauseStory() {
+  if (storyPaused) return;
+
+  storyPaused = true;
+  clearStoryTimer();
+
+  document.getElementById("storyViewer")?.classList.add("paused");
+
+  const video = document.querySelector("#storyViewerContent video");
+  if (video && !video.paused) {
+    video.pause();
+  }
+}
+
+function resumeStory() {
+  if (!storyPaused) return;
+
+  storyPaused = false;
+
+  document.getElementById("storyViewer")?.classList.remove("paused");
+
+  const video = document.querySelector("#storyViewerContent video");
+
+  if (video) {
+    video.play().catch(() => {});
+  }
+
+  const story = state.stories[state.activeStoryIndex];
+  if (!story) return;
+
+  if (
+    story.media_type === "video" ||
+    String(story.mime_type || "").startsWith("video/")
+  ) {
+    if (video && Number.isFinite(video.duration)) {
+      const remaining =
+        Math.max(300, (video.duration - video.currentTime) * 1000);
+
+      storyTimer = setTimeout(() => {
+        if (!storyPaused) showNextStory();
+      }, remaining);
+    }
+  } else {
+    storyTimer = setTimeout(() => {
+      if (!storyPaused) showNextStory();
+    }, 5000);
   }
 }
 
 function closeStoryViewer() {
-  const viewer =
-    document.getElementById("storyViewer");
+  clearStoryTimer();
 
-  const content =
-    document.getElementById("storyViewerContent");
+  const viewer = document.getElementById("storyViewer");
+  const content = document.getElementById("storyViewerContent");
 
   hide(viewer);
 
@@ -3283,15 +3456,14 @@ function closeStoryViewer() {
   }
 
   state.activeStoryIndex = -1;
+  storyPaused = false;
 }
 
 function showPreviousStory() {
   if (!state.stories.length) return;
 
   state.activeStoryIndex =
-    (state.activeStoryIndex - 1 +
-      state.stories.length) %
-    state.stories.length;
+    Math.max(0, state.activeStoryIndex - 1);
 
   renderActiveStory();
 }
@@ -3299,10 +3471,12 @@ function showPreviousStory() {
 function showNextStory() {
   if (!state.stories.length) return;
 
-  state.activeStoryIndex =
-    (state.activeStoryIndex + 1) %
-    state.stories.length;
+  if (state.activeStoryIndex >= state.stories.length - 1) {
+    closeStoryViewer();
+    return;
+  }
 
+  state.activeStoryIndex++;
   renderActiveStory();
 }
 
@@ -4174,98 +4348,205 @@ document
 
 /* VYBE story controls */
 (() => {
-  const addStoryButton =
-    document.getElementById("addStoryButton");
+  const addStoryButton = document.getElementById("addStoryButton");
+  const closeButton = document.getElementById("closeCreateStory");
+  const form = document.getElementById("createStoryForm");
+  const input = document.getElementById("storyMediaInput");
+  const closeViewer = document.getElementById("closeStoryViewer");
+  const left = document.getElementById("storyTapLeft");
+  const right = document.getElementById("storyTapRight");
+  const feed = document.getElementById("storiesFeed");
+  const viewer = document.getElementById("storyViewer");
+  const likeButton = document.getElementById("storyLikeButton");
+  const reactionPicker = document.getElementById("storyReactionPicker");
+  const deleteButton = document.getElementById("storyDeleteButton");
 
-   const closeButton =
-    document.getElementById("closeCreateStory");
+  addStoryButton?.addEventListener("click", openCreateStory);
+  closeButton?.addEventListener("click", closeCreateStory);
+  form?.addEventListener("submit", createStory);
+  input?.addEventListener("change", handleStoryMediaSelection);
+  closeViewer?.addEventListener("click", closeStoryViewer);
 
-  const form =
-    document.getElementById("createStoryForm");
+  left?.addEventListener("click", showPreviousStory);
+  right?.addEventListener("click", showNextStory);
 
-  const input =
-    document.getElementById("storyMediaInput");
+  feed?.addEventListener("click", event => {
+    const card = event.target.closest("[data-story-user]");
 
-  const closeViewer =
-    document.getElementById("closeStoryViewer");
+    if (card) {
+      openStoryByUser(card.dataset.storyUser);
+      return;
+    }
 
-  const previous =
-    document.getElementById("previousStory");
+    if (event.target.closest("#emptyAddStory")) {
+      openCreateStory();
+    }
+  });
 
-  const next =
-    document.getElementById("nextStory");
+  viewer?.addEventListener("pointerdown", event => {
+    storyHoldStart = Date.now();
+    storyTouchStartX = event.clientX;
+    storyTouchStartY = event.clientY;
+    pauseStory();
+  });
 
-  const feed =
-    document.getElementById("storiesFeed");
+  viewer?.addEventListener("pointerup", event => {
+    const dx = event.clientX - storyTouchStartX;
+    const dy = event.clientY - storyTouchStartY;
 
-  if (addStoryButton) {
-    addStoryButton.addEventListener(
-      "click",
-      openCreateStory
-    );
-  }
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) {
+        showNextStory();
+      } else {
+        showPreviousStory();
+      }
+      return;
+    }
 
+    resumeStory();
+  });
 
-  if (closeButton) {
-    closeButton.addEventListener(
-      "click",
-      closeCreateStory
-    );
-  }
+  viewer?.addEventListener("pointercancel", resumeStory);
 
-  if (form) {
-    form.addEventListener(
-      "submit",
-      createStory
-    );
-  }
+  likeButton?.addEventListener("click", async () => {
+    const story = state.stories[state.activeStoryIndex];
+    if (!story) return;
 
-  if (input) {
-    input.addEventListener(
-      "change",
-      handleStoryMediaSelection
-    );
-  }
+    const reaction = story.viewer_reaction === "❤️"
+      ? null
+      : "❤️";
 
-  if (closeViewer) {
-    closeViewer.addEventListener(
-      "click",
-      closeStoryViewer
-    );
-  }
-
-  if (previous) {
-    previous.addEventListener(
-      "click",
-      showPreviousStory
-    );
-  }
-
-  if (next) {
-    next.addEventListener(
-      "click",
-      showNextStory
-    );
-  }
-
-  if (feed) {
-    feed.addEventListener("click", event => {
-      const card =
-        event.target.closest("[data-story-user]");
-
-      if (card) {
-        openStoryByUser(
-          card.dataset.storyUser
-        );
-        return;
+    try {
+      if (reaction) {
+        await api(`/api/stories/${story.id}/reaction`, {
+          method: "POST",
+          body: JSON.stringify({ reaction })
+        });
       }
 
-      const emptyAdd =
-        event.target.closest("#emptyAddStory");
+      story.viewer_reaction = reaction;
+      likeButton.textContent = reaction || "♡";
+    } catch (error) {
+      console.error(error);
+    }
+  });
 
-      if (emptyAdd) {
-        openCreateStory();
+  let heartHoldTimer = null;
+
+  likeButton?.addEventListener("pointerdown", event => {
+    event.stopPropagation();
+
+    heartHoldTimer = setTimeout(() => {
+      reactionPicker?.classList.remove("hidden");
+    }, 500);
+  });
+
+  likeButton?.addEventListener("pointerup", event => {
+    event.stopPropagation();
+
+    if (heartHoldTimer) {
+      clearTimeout(heartHoldTimer);
+      heartHoldTimer = null;
+    }
+  });
+
+  likeButton?.addEventListener("pointercancel", () => {
+    clearTimeout(heartHoldTimer);
+    heartHoldTimer = null;
+  });
+
+  document.querySelectorAll("[data-reaction]").forEach(button => {
+    button.addEventListener("click", async event => {
+      event.stopPropagation();
+
+      const story = state.stories[state.activeStoryIndex];
+      if (!story) return;
+
+      try {
+        await api(`/api/stories/${story.id}/reaction`, {
+          method: "POST",
+          body: JSON.stringify({
+            reaction: button.dataset.reaction
+          })
+        });
+
+        story.viewer_reaction = button.dataset.reaction;
+
+        if (likeButton) {
+          likeButton.textContent = button.dataset.reaction;
+        }
+
+        reactionPicker?.classList.add("hidden");
+      } catch (error) {
+        console.error(error);
       }
     });
-  }
+  });
+
+  deleteButton?.addEventListener("click", async event => {
+    event.stopPropagation();
+
+    const story = state.stories[state.activeStoryIndex];
+
+    if (
+      !story ||
+      String(story.user_id) !== String(state.user?.id)
+    ) {
+      return;
+    }
+
+    if (!confirm("Delete this story?")) return;
+
+    try {
+      await api(`/api/stories/${story.id}`, {
+        method: "DELETE"
+      });
+
+      closeStoryViewer();
+      await loadStories();
+    } catch (error) {
+      alert(error.message || "Could not delete story");
+    }
+  });
+
+  document.getElementById("storyReplyButton")?.addEventListener(
+    "click",
+    () => {
+      const story = state.stories[state.activeStoryIndex];
+      if (!story) return;
+
+      const message = prompt("Reply to this story:");
+
+      if (!message?.trim()) return;
+
+      alert("DM reply will be connected to Messages in the next step.");
+    }
+  );
+
+  document.getElementById("storyShareButton")?.addEventListener(
+    "click",
+    async () => {
+      const story = state.stories[state.activeStoryIndex];
+      if (!story) return;
+
+      const shareData = {
+        title: "VYBE Story",
+        text: story.caption || "Check out this VYBE story",
+        url: `${location.origin}/?story=${encodeURIComponent(story.id)}`
+      };
+
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+        } else {
+          await navigator.clipboard.writeText(shareData.url);
+          alert("Story link copied.");
+        }
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          console.error(error);
+        }
+      }
+    }
+  );
 })();

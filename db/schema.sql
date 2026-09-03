@@ -385,3 +385,16 @@ CREATE INDEX IF NOT EXISTS idx_story_views_story
 
 CREATE INDEX IF NOT EXISTS idx_story_views_viewer
     ON story_views (viewer_id, viewed_at DESC);
+
+CREATE TABLE IF NOT EXISTS story_reactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    story_id UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reaction VARCHAR(20) NOT NULL DEFAULT '❤️',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_story_reaction UNIQUE (story_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_story_reactions_story_id
+ON story_reactions(story_id);
+

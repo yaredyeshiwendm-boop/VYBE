@@ -25,6 +25,7 @@ function setAuthCookie(res, token) {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
+    path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 }
@@ -205,7 +206,8 @@ router.post("/logout", (req, res) => {
   res.clearCookie("vybe_token", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
+    secure: process.env.NODE_ENV === "production",
+    path: "/"
   });
 
   res.json({

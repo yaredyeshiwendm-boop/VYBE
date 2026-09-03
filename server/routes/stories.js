@@ -29,6 +29,19 @@ router.get("/", requireAuth, async (req, res) => {
         m.height,
         m.duration_ms,
 
+        (
+          SELECT COUNT(*)::int
+          FROM story_views sv2
+          WHERE sv2.story_id = s.id
+        ) AS viewer_count,
+
+        COALESCE((
+          SELECT sr.reaction
+          FROM story_reactions sr
+          WHERE sr.story_id = s.id
+            AND sr.user_id = $1
+        ), NULL) AS viewer_reaction,
+
         EXISTS (
           SELECT 1
           FROM story_views sv
@@ -92,13 +105,31 @@ router.post("/", requireAuth, async (req, res) => {
       });
     }
 
+    const countResult = await query(
+      `SELECT COUNT(*)::int AS count
+       FROM stories
+       WHERE user_id = $1
+         AND created_at > NOW() - INTERVAL '24 hours'`,
+      [req.user.id]
+    );
+
+    if (countResult.rows[0].count >= 3) {
+      return res.status(400).json({
+        success: false,
+        error: "You can only share 3 stories every 24 hours"
+      });
+    }
+
     const media = await query(
       `SELECT
         id,
         media_type,
         url,
         mime_type,
-        size_bytes
+        size_bytes,
+        width,
+        height,
+        duration_ms
        FROM media
        WHERE id = $1
          AND user_id = $2
@@ -115,24 +146,17 @@ router.post("/", requireAuth, async (req, res) => {
 
     const result = await query(
       `INSERT INTO stories
-        (
-          user_id,
-          media_id,
-          caption
-        )
-       VALUES ($1, $2, $3)
+        (user_id, media_id, caption, expires_at)
+       VALUES
+        ($1, $2, $3, NOW() + INTERVAL '24 hours')
        RETURNING
-         id,
-         user_id,
-         media_id,
-         caption,
-         created_at,
-         expires_at`,
-      [
-        req.user.id,
-        mediaId,
-        caption
-      ]
+        id,
+        user_id,
+        media_id,
+        caption,
+        created_at,
+        expires_at`,
+      [req.user.id, mediaId, caption]
     );
 
     res.status(201).json({
@@ -190,6 +214,59 @@ router.post("/:id/view", requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Could not record story view"
+    });
+  }
+});
+
+
+router.post("/:id/reaction", requireAuth, async (req, res) => {
+  try {
+    const reaction = String(req.body.reaction || "❤️").trim();
+
+    const allowed = ["❤️", "😂", "😮", "😢", "😡", "👍"];
+    if (!allowed.includes(reaction)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid reaction"
+      });
+    }
+
+    const story = await query(
+      `SELECT id
+       FROM stories
+       WHERE id = $1
+         AND expires_at > NOW()`,
+      [req.params.id]
+    );
+
+    if (!story.rows.length) {
+      return res.status(404).json({
+        success: false,
+        error: "Story not found or expired"
+      });
+    }
+
+    await query(
+      `INSERT INTO story_reactions
+        (story_id, user_id, reaction)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (story_id, user_id)
+       DO UPDATE SET
+         reaction = EXCLUDED.reaction,
+         created_at = NOW()`,
+      [req.params.id, req.user.id, reaction]
+    );
+
+    res.json({
+      success: true,
+      reaction
+    });
+  } catch (error) {
+    console.error("Story reaction error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not react to story"
     });
   }
 });
