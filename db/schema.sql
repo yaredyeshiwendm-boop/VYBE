@@ -85,3 +85,36 @@ CREATE INDEX IF NOT EXISTS idx_reactions_post
 CREATE INDEX IF NOT EXISTS idx_reactions_user
     ON reactions (user_id);
 
+
+-- =========================================
+-- COMMENTS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    post_id UUID NOT NULL
+        REFERENCES posts(id)
+        ON DELETE CASCADE,
+
+    user_id UUID NOT NULL
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    content TEXT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT comment_content_not_empty
+        CHECK (char_length(btrim(content)) >= 1),
+
+    CONSTRAINT comment_content_max_length
+        CHECK (char_length(content) <= 1000)
+);
+
+CREATE INDEX IF NOT EXISTS idx_comments_post_created
+    ON comments (post_id, created_at ASC);
+
+CREATE INDEX IF NOT EXISTS idx_comments_user_created
+    ON comments (user_id, created_at DESC);

@@ -392,5 +392,187 @@ router.get("/user/:username", optionalAuth, async (req, res) => {
   }
 });
 
+// =========================================
+// COMMENTS
+// =========================================
+
+router.get("/:id/comments", optionalAuth, async (req, res) => {
+  try {
+    const postId = String(req.params.id);
+
+    const postCheck = await query(
+      `SELECT id
+       FROM posts
+       WHERE id = $1`,
+      [postId]
+    );
+
+    if (postCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Post not found"
+      });
+    }
+
+    const result = await query(
+      `SELECT
+        c.id,
+        c.post_id,
+        c.user_id,
+        c.content,
+        c.created_at,
+        c.updated_at,
+
+        u.username,
+        u.display_name,
+        u.avatar_url,
+        u.is_verified
+
+       FROM comments c
+
+       INNER JOIN users u
+         ON u.id = c.user_id
+
+       WHERE c.post_id = $1
+
+       ORDER BY c.created_at ASC
+
+       LIMIT 100`,
+      [postId]
+    );
+
+    res.json({
+      success: true,
+      comments: result.rows
+    });
+  } catch (error) {
+    console.error("Get comments error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not load comments"
+    });
+  }
+});
+
+
+router.post("/:id/comments", requireAuth, async (req, res) => {
+  try {
+    const postId = String(req.params.id);
+    const content = String(req.body.content || "").trim();
+
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        error: "Comment content is required"
+      });
+    }
+
+    if (content.length > 1000) {
+      return res.status(400).json({
+        success: false,
+        error: "Comment cannot exceed 1000 characters"
+      });
+    }
+
+    const postCheck = await query(
+      `SELECT id
+       FROM posts
+       WHERE id = $1`,
+      [postId]
+    );
+
+    if (postCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Post not found"
+      });
+    }
+
+    const result = await query(
+      `INSERT INTO comments
+        (post_id, user_id, content)
+       VALUES ($1, $2, $3)
+       RETURNING
+        id,
+        post_id,
+        user_id,
+        content,
+        created_at,
+        updated_at`,
+      [postId, req.user.id, content]
+    );
+
+    const author = await query(
+      `SELECT
+        username,
+        display_name,
+        avatar_url,
+        is_verified
+       FROM users
+       WHERE id = $1`,
+      [req.user.id]
+    );
+
+    res.status(201).json({
+      success: true,
+      comment: {
+        ...result.rows[0],
+        ...author.rows[0]
+      }
+    });
+  } catch (error) {
+    console.error("Create comment error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not create comment"
+    });
+  }
+});
+
+
+router.delete(
+  "/:id/comments/:commentId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const postId = String(req.params.id);
+      const commentId = String(req.params.commentId);
+
+      const result = await query(
+        `DELETE FROM comments
+         WHERE id = $1
+           AND post_id = $2
+           AND user_id = $3
+         RETURNING id`,
+        [
+          commentId,
+          postId,
+          req.user.id
+        ]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Comment not found or not owned by you"
+        });
+      }
+
+      res.json({
+        success: true,
+        deletedCommentId: result.rows[0].id
+      });
+    } catch (error) {
+      console.error("Delete comment error:", error);
+
+      res.status(500).json({
+        success: false,
+        error: "Could not delete comment"
+      });
+    }
+  }
+);
 
 module.exports = router;

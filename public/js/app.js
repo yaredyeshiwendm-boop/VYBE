@@ -721,10 +721,13 @@ function renderPosts(posts) {
           </button>
 
           <button
+            class="comments-button"
             type="button"
             aria-label="Comments"
+            data-comment-post="${escapeHtml(post.id)}"
           >
             💬
+            <span class="comment-count" data-comment-count="${escapeHtml(post.id)}">0</span>
           </button>
 
           <button
@@ -757,6 +760,457 @@ function renderPosts(posts) {
         () => toggleReaction(button.dataset.reactionPost, button)
       );
     });
+
+  postsFeed
+    .querySelectorAll("[data-comment-post]")
+    .forEach(button => {
+      button.addEventListener(
+        "click",
+        () => openComments(button.dataset.commentPost)
+      );
+    });
+
+  postsFeed
+    .querySelectorAll("[data-comment-post]")
+    .forEach(button => {
+      loadCommentCount(
+        button.dataset.commentPost,
+        button
+      );
+    });
+}
+
+
+
+let activeCommentsPostId = null;
+
+const commentsModal = document.getElementById("commentsModal");
+const commentsList = document.getElementById("commentsList");
+const commentForm = document.getElementById("commentForm");
+const commentContent = document.getElementById("commentContent");
+const submitComment = document.getElementById("submitComment");
+const commentError = document.getElementById("commentError");
+
+function setCommentError(message = "") {
+  if (!commentError) return;
+
+  commentError.textContent = message;
+
+  commentError.classList.toggle(
+    "hidden",
+    !message
+  );
+}
+
+function formatCommentDate(value) {
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return "";
+  }
+}
+
+function renderComments(comments) {
+  if (!commentsList) return;
+
+  if (!comments.length) {
+    commentsList.innerHTML = `
+      <div class="comments-empty">
+        <div class="comments-empty-icon">💬</div>
+        <strong>No comments yet</strong>
+        <p>Be the first to VYBE.</p>
+      </div>
+    `;
+    return;
+  }
+
+  commentsList.innerHTML = comments.map(comment => {
+    const name =
+      comment.display_name ||
+      comment.username ||
+      "VYBER";
+
+    const initial =
+      name.charAt(0).toUpperCase();
+
+    const isMine =
+      state.user &&
+      state.user.id === comment.user_id;
+
+    return `
+      <article
+        class="comment-item"
+        data-comment-id="${escapeHtml(comment.id)}"
+      >
+        <div class="comment-avatar">
+          ${escapeHtml(initial)}
+        </div>
+
+        <div class="comment-body">
+          <div class="comment-meta">
+            <strong>
+              ${escapeHtml(name)}
+              ${comment.is_verified ? " ✓" : ""}
+            </strong>
+
+            <span>
+              @${escapeHtml(comment.username)}
+              · ${escapeHtml(
+                formatCommentDate(comment.created_at)
+              )}
+            </span>
+          </div>
+
+          <p class="comment-text">
+            ${escapeHtml(comment.content)}
+          </p>
+
+          ${
+            isMine
+              ? `
+                <button
+                  class="comment-delete"
+                  type="button"
+                  data-delete-comment="${escapeHtml(comment.id)}"
+                >
+                  Delete
+                </button>
+              `
+              : ""
+          }
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  commentsList
+    .querySelectorAll("[data-delete-comment]")
+    .forEach(button => {
+      button.addEventListener(
+        "click",
+        () => deleteComment(
+          activeCommentsPostId,
+          button.dataset.deleteComment,
+          button
+        )
+      );
+    });
+}
+
+async function loadComments(postId) {
+  if (!commentsList) return;
+
+  commentsList.innerHTML = `
+    <div class="comments-loading">
+      Loading comments…
+    </div>
+  `;
+
+  try {
+    const data = await api(
+      `/api/posts/${encodeURIComponent(postId)}/comments`
+    );
+
+    if (!data.success) {
+      throw new Error(
+        data.error || "Could not load comments."
+      );
+    }
+
+    renderComments(data.comments || []);
+    updateCommentCount(
+      postId,
+      (data.comments || []).length
+    );
+
+  } catch (error) {
+    console.error("Load comments error:", error);
+
+    commentsList.innerHTML = `
+      <div class="comments-error">
+        <strong>Couldn't load comments</strong>
+        <p>${escapeHtml(
+          error.message || "Please try again."
+        )}</p>
+
+        <button
+          type="button"
+          class="secondary-button"
+          data-retry-comments
+        >
+          Try again
+        </button>
+      </div>
+    `;
+
+    const retry =
+      commentsList.querySelector(
+        "[data-retry-comments]"
+      );
+
+    if (retry) {
+      retry.addEventListener(
+        "click",
+        () => loadComments(postId)
+      );
+    }
+  }
+}
+
+function updateCommentCount(postId, count) {
+  const button =
+    postsFeed?.querySelector(
+      `[data-comment-post="${CSS.escape(postId)}"]`
+    );
+
+  if (!button) return;
+
+  const countElement =
+    button.querySelector(
+      `[data-comment-count="${CSS.escape(postId)}"]`
+    );
+
+  if (countElement) {
+    countElement.textContent = String(count);
+  }
+}
+
+async function loadCommentCount(postId, button) {
+  try {
+    const data = await api(
+      `/api/posts/${encodeURIComponent(postId)}/comments`
+    );
+
+    if (!data.success) return;
+
+    const countElement =
+      button.querySelector(".comment-count");
+
+    if (countElement) {
+      countElement.textContent =
+        String((data.comments || []).length);
+    }
+  } catch (error) {
+    console.error(
+      "Comment count error:",
+      error
+    );
+  }
+}
+
+function openComments(postId) {
+  if (!commentsModal) return;
+
+  activeCommentsPostId = postId;
+
+  setCommentError("");
+
+  commentsModal.classList.remove("hidden");
+  commentsModal.setAttribute(
+    "aria-hidden",
+    "false"
+  );
+
+  document.body.classList.add(
+    "comments-open"
+  );
+
+  if (commentContent) {
+    commentContent.value = "";
+  }
+
+  loadComments(postId);
+
+  setTimeout(() => {
+    commentContent?.focus();
+  }, 50);
+}
+
+function closeComments() {
+  if (!commentsModal) return;
+
+  commentsModal.classList.add("hidden");
+  commentsModal.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+
+  document.body.classList.remove(
+    "comments-open"
+  );
+
+  activeCommentsPostId = null;
+  setCommentError("");
+}
+
+document
+  .querySelectorAll("[data-close-comments]")
+  .forEach(element => {
+    element.addEventListener(
+      "click",
+      closeComments
+    );
+  });
+
+document.addEventListener(
+  "keydown",
+  event => {
+    if (
+      event.key === "Escape" &&
+      commentsModal &&
+      !commentsModal.classList.contains("hidden")
+    ) {
+      closeComments();
+    }
+  }
+);
+
+async function submitCommentRequest() {
+  if (!activeCommentsPostId) return;
+
+  if (
+    !state.authenticated ||
+    !state.user
+  ) {
+    setCommentError(
+      "Please log in to comment."
+    );
+    return;
+  }
+
+  const content =
+    String(commentContent?.value || "")
+      .trim();
+
+  if (!content) {
+    setCommentError(
+      "Comment cannot be empty."
+    );
+    commentContent?.focus();
+    return;
+  }
+
+  if (content.length > 1000) {
+    setCommentError(
+      "Comment cannot exceed 1000 characters."
+    );
+    return;
+  }
+
+  if (submitComment?.disabled) return;
+
+  setCommentError("");
+
+  submitComment.disabled = true;
+  submitComment.textContent = "Posting…";
+
+  try {
+    const data = await api(
+      `/api/posts/${encodeURIComponent(activeCommentsPostId)}/comments`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          content
+        })
+      }
+    );
+
+    if (!data.success) {
+      throw new Error(
+        data.error || "Could not post comment."
+      );
+    }
+
+    commentContent.value = "";
+
+    await loadComments(
+      activeCommentsPostId
+    );
+
+  } catch (error) {
+    console.error(
+      "Create comment error:",
+      error
+    );
+
+    setCommentError(
+      error.message ||
+      "Could not post comment."
+    );
+  } finally {
+    submitComment.disabled = false;
+    submitComment.textContent = "Post";
+  }
+}
+
+commentForm?.addEventListener(
+  "submit",
+  event => {
+    event.preventDefault();
+    submitCommentRequest();
+  }
+);
+
+async function deleteComment(
+  postId,
+  commentId,
+  button
+) {
+  if (!postId || !commentId) return;
+
+  if (
+    !state.authenticated ||
+    !state.user
+  ) {
+    setCommentError(
+      "Please log in to delete comments."
+    );
+    return;
+  }
+
+  if (button.disabled) return;
+
+  const confirmed =
+    window.confirm(
+      "Delete this comment?"
+    );
+
+  if (!confirmed) return;
+
+  button.disabled = true;
+  button.textContent = "Deleting…";
+
+  try {
+    const data = await api(
+      `/api/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`,
+      {
+        method: "DELETE"
+      }
+    );
+
+    if (!data.success) {
+      throw new Error(
+        data.error ||
+        "Could not delete comment."
+      );
+    }
+
+    await loadComments(postId);
+
+  } catch (error) {
+    console.error(
+      "Delete comment error:",
+      error
+    );
+
+    setCommentError(
+      error.message ||
+      "Could not delete comment."
+    );
+
+    button.disabled = false;
+    button.textContent = "Delete";
+  }
 }
 
 
