@@ -3,7 +3,9 @@
 const state = {
   user: null,
   authenticated: false,
-  createPostMedia: []
+  createPostMedia: [],
+  stories: [],
+  activeStoryIndex: -1
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -76,6 +78,7 @@ function showHome() {
   show(homeScreen);
 
   updateHome();
+  loadStories();
   loadPosts();
 }
 
@@ -2959,6 +2962,350 @@ document.addEventListener(
 );
 
 
+
+function getMediaUrl(url) {
+  if (!url) return "";
+  return url.startsWith("http")
+    ? url
+    : window.location.origin + url;
+}
+
+async function loadStories() {
+  const feed = document.getElementById("storiesFeed");
+  if (!feed) return;
+
+  feed.innerHTML = `
+    <div class="stories-loading">
+      Loading stories...
+    </div>
+  `;
+
+  try {
+    const data = await api("/api/stories");
+    state.stories = data.stories || [];
+    renderStories();
+  } catch (error) {
+    feed.innerHTML = `
+      <div class="stories-error">
+        Couldn't load stories.
+      </div>
+    `;
+  }
+}
+
+function renderStories() {
+  const feed = document.getElementById("storiesFeed");
+  if (!feed) return;
+
+  const ownStory = state.stories.find(
+    story => story.user_id === state.user?.id
+  );
+
+  const users = [];
+  const seen = new Set();
+
+  if (ownStory) {
+    users.push(ownStory);
+    seen.add(ownStory.user_id);
+  }
+
+  for (const story of state.stories) {
+    if (!seen.has(story.user_id)) {
+      users.push(story);
+      seen.add(story.user_id);
+    }
+  }
+
+  if (!users.length) {
+    feed.innerHTML = `
+      <button
+        class="story-card story-add-card"
+        id="emptyAddStory"
+        type="button"
+      >
+        <span class="story-add-icon">＋</span>
+        <span>Your story</span>
+      </button>
+    `;
+    return;
+  }
+
+  feed.innerHTML = users.map(story => {
+    const name =
+      story.display_name ||
+      story.username ||
+      "VYBER";
+
+    const initial =
+      name.charAt(0).toUpperCase();
+
+    const viewed =
+      story.viewer_viewed ? " viewed" : "";
+
+    return `
+      <button
+        class="story-card${viewed}"
+        type="button"
+        data-story-user="${escapeHtml(story.user_id)}"
+        aria-label="View ${escapeHtml(name)}'s story"
+      >
+        <span class="story-avatar">
+          ${escapeHtml(initial)}
+        </span>
+
+        <span class="story-name">
+          ${escapeHtml(
+            story.user_id === state.user?.id
+              ? "Your story"
+              : name
+          )}
+        </span>
+      </button>
+    `;
+  }).join("");
+}
+
+function openCreateStory() {
+  const modal =
+    document.getElementById("createStoryModal");
+
+  const input =
+    document.getElementById("storyMediaInput");
+
+  const caption =
+    document.getElementById("storyCaption");
+
+  const error =
+    document.getElementById("createStoryError");
+
+  clearError(error);
+
+  input.value = "";
+  caption.value = "";
+
+  document.getElementById("storyMediaPreview")
+    .innerHTML = "";
+
+  document.getElementById("storyMediaPreview")
+    .classList.add("hidden");
+
+  state.createStoryMedia = null;
+
+  show(modal);
+}
+
+function closeCreateStory() {
+  hide(document.getElementById("createStoryModal"));
+}
+
+async function handleStoryMediaSelection(event) {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  const error =
+    document.getElementById("createStoryError");
+
+  clearError(error);
+
+  try {
+    const media = await uploadPostMedia(file);
+
+    state.createStoryMedia = media;
+
+    const preview =
+      document.getElementById("storyMediaPreview");
+
+    const url = escapeHtml(media.url);
+
+    preview.innerHTML =
+      media.media_type === "video"
+        ? `<video src="${url}" controls playsinline></video>`
+        : `<img src="${url}" alt="Story preview">`;
+
+    preview.classList.remove("hidden");
+  } catch (errorValue) {
+    state.createStoryMedia = null;
+
+    showError(
+      error,
+      errorValue.message ||
+      "Could not upload story media."
+    );
+  } finally {
+    event.target.value = "";
+  }
+}
+
+async function createStory(event) {
+  event.preventDefault();
+
+  const error =
+    document.getElementById("createStoryError");
+
+  const button =
+    document.getElementById("publishStoryButton");
+
+  clearError(error);
+
+  if (!state.createStoryMedia?.id) {
+    showError(
+      error,
+      "Choose a photo or video first."
+    );
+    return;
+  }
+
+  const caption =
+    document.getElementById("storyCaption")
+      .value.trim();
+
+  setButtonLoading(button, true);
+
+  try {
+    await api("/api/stories", {
+      method: "POST",
+      body: JSON.stringify({
+        media_id: state.createStoryMedia.id,
+        caption
+      })
+    });
+
+    state.createStoryMedia = null;
+
+    closeCreateStory();
+    await loadStories();
+  } catch (errorValue) {
+    showError(
+      error,
+      errorValue.message ||
+      "Could not share story."
+    );
+  } finally {
+    setButtonLoading(
+      button,
+      false,
+      "Share Story"
+    );
+  }
+}
+
+function openStoryByUser(userId) {
+  const index = state.stories.findIndex(
+    story => story.user_id === userId
+  );
+
+  if (index < 0) return;
+
+  state.activeStoryIndex = index;
+  renderActiveStory();
+}
+
+async function renderActiveStory() {
+  const story =
+    state.stories[state.activeStoryIndex];
+
+  if (!story) return;
+
+  const viewer =
+    document.getElementById("storyViewer");
+
+  const content =
+    document.getElementById("storyViewerContent");
+
+  const media = story.media || {};
+  const url = getMediaUrl(media.url);
+
+  const name =
+    story.display_name ||
+    story.username ||
+    "VYBER";
+
+  content.innerHTML = `
+    <div class="story-viewer-header">
+      <strong>${escapeHtml(name)}</strong>
+      <span>@${escapeHtml(story.username || "")}</span>
+    </div>
+
+    <div class="story-viewer-media">
+      ${
+        media.media_type === "video"
+          ? `<video
+               src="${escapeHtml(url)}"
+               controls
+               autoplay
+               playsinline
+             ></video>`
+          : `<img
+               src="${escapeHtml(url)}"
+               alt="${escapeHtml(name)}'s story"
+             >`
+      }
+    </div>
+
+    ${
+      story.caption
+        ? `<p class="story-viewer-caption">
+             ${escapeHtml(story.caption)}
+           </p>`
+        : ""
+    }
+  `;
+
+  show(viewer);
+
+  try {
+    if (!story.viewer_viewed) {
+      await api(
+        `/api/stories/${encodeURIComponent(story.id)}/view`,
+        { method: "POST" }
+      );
+
+      story.viewer_viewed = true;
+      renderStories();
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function closeStoryViewer() {
+  const viewer =
+    document.getElementById("storyViewer");
+
+  const content =
+    document.getElementById("storyViewerContent");
+
+  hide(viewer);
+
+  if (content) {
+    content.innerHTML = "";
+  }
+
+  state.activeStoryIndex = -1;
+}
+
+function showPreviousStory() {
+  if (!state.stories.length) return;
+
+  state.activeStoryIndex =
+    (state.activeStoryIndex - 1 +
+      state.stories.length) %
+    state.stories.length;
+
+  renderActiveStory();
+}
+
+function showNextStory() {
+  if (!state.stories.length) return;
+
+  state.activeStoryIndex =
+    (state.activeStoryIndex + 1) %
+    state.stories.length;
+
+  renderActiveStory();
+}
+
 function openCreatePost() {
   clearError(document.getElementById("createPostError"));
 
@@ -3820,6 +4167,104 @@ document
       ) {
         state.createPostMedia.splice(index, 1);
         renderPostMediaPreview();
+      }
+    });
+  }
+})();
+
+/* VYBE story controls */
+(() => {
+  const addStoryButton =
+    document.getElementById("addStoryButton");
+
+   const closeButton =
+    document.getElementById("closeCreateStory");
+
+  const form =
+    document.getElementById("createStoryForm");
+
+  const input =
+    document.getElementById("storyMediaInput");
+
+  const closeViewer =
+    document.getElementById("closeStoryViewer");
+
+  const previous =
+    document.getElementById("previousStory");
+
+  const next =
+    document.getElementById("nextStory");
+
+  const feed =
+    document.getElementById("storiesFeed");
+
+  if (addStoryButton) {
+    addStoryButton.addEventListener(
+      "click",
+      openCreateStory
+    );
+  }
+
+
+  if (closeButton) {
+    closeButton.addEventListener(
+      "click",
+      closeCreateStory
+    );
+  }
+
+  if (form) {
+    form.addEventListener(
+      "submit",
+      createStory
+    );
+  }
+
+  if (input) {
+    input.addEventListener(
+      "change",
+      handleStoryMediaSelection
+    );
+  }
+
+  if (closeViewer) {
+    closeViewer.addEventListener(
+      "click",
+      closeStoryViewer
+    );
+  }
+
+  if (previous) {
+    previous.addEventListener(
+      "click",
+      showPreviousStory
+    );
+  }
+
+  if (next) {
+    next.addEventListener(
+      "click",
+      showNextStory
+    );
+  }
+
+  if (feed) {
+    feed.addEventListener("click", event => {
+      const card =
+        event.target.closest("[data-story-user]");
+
+      if (card) {
+        openStoryByUser(
+          card.dataset.storyUser
+        );
+        return;
+      }
+
+      const emptyAdd =
+        event.target.closest("#emptyAddStory");
+
+      if (emptyAdd) {
+        openCreateStory();
       }
     });
   }
