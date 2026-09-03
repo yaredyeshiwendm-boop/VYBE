@@ -2,6 +2,7 @@ const express = require("express");
 
 const { query } = require("../../db");
 const { requireAuth, optionalAuth } = require("../middleware/auth");
+const { createNotification } = require("../services/notifications");
 
 const router = express.Router();
 
@@ -269,14 +270,23 @@ router.put("/:username/follow", requireAuth, async (req, res) => {
       });
     }
 
-    await query(
+    const followResult = await query(
       `INSERT INTO follows
         (follower_id, following_id)
        VALUES ($1, $2)
        ON CONFLICT (follower_id, following_id)
-       DO NOTHING`,
+       DO NOTHING
+       RETURNING id`,
       [req.user.id, targetId]
     );
+
+    if (followResult.rows.length > 0) {
+      await createNotification({
+        recipientId: targetId,
+        actorId: req.user.id,
+        type: "follow"
+      });
+    }
 
     const count = await query(
       `SELECT COUNT(*)::int AS followers_count

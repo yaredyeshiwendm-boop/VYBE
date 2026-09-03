@@ -6,6 +6,8 @@ const {
   optionalAuth
 } = require("../middleware/auth");
 
+const { createNotification } = require("../services/notifications");
+
 const router = express.Router();
 
 const ALLOWED_REACTIONS = new Set([
@@ -213,7 +215,11 @@ router.post("/", requireAuth, async (req, res) => {
 router.put("/:id/reaction", requireAuth, async (req, res) => {
   try {
     const postId = String(req.params.id);
-    const reaction = String(req.body.reaction || "")
+    const reaction = String(
+      req.body.reaction ??
+      req.body.reaction_type ??
+      ""
+    )
       .trim()
       .toLowerCase();
 
@@ -225,7 +231,9 @@ router.put("/:id/reaction", requireAuth, async (req, res) => {
     }
 
     const postCheck = await query(
-      `SELECT id
+      `SELECT
+        id,
+        user_id
        FROM posts
        WHERE id = $1`,
       [postId]
@@ -237,6 +245,14 @@ router.put("/:id/reaction", requireAuth, async (req, res) => {
         error: "Post not found"
       });
     }
+
+    const existingReaction = await query(
+      `SELECT id
+       FROM reactions
+       WHERE post_id = $1
+         AND user_id = $2`,
+      [postId, req.user.id]
+    );
 
     const result = await query(
       `INSERT INTO reactions
@@ -262,6 +278,18 @@ router.put("/:id/reaction", requireAuth, async (req, res) => {
         reaction
       ]
     );
+
+    if (
+      existingReaction.rows.length === 0 &&
+      postCheck.rows[0].user_id !== req.user.id
+    ) {
+      await createNotification({
+        recipientId: postCheck.rows[0].user_id,
+        actorId: req.user.id,
+        type: "reaction",
+        postId
+      });
+    }
 
     const countResult = await query(
       `SELECT COUNT(*)::int AS reaction_count
@@ -582,7 +610,9 @@ router.post("/:id/comments", requireAuth, async (req, res) => {
     }
 
     const postCheck = await query(
-      `SELECT id
+      `SELECT
+        id,
+        user_id
        FROM posts
        WHERE id = $1`,
       [postId]
@@ -608,6 +638,14 @@ router.post("/:id/comments", requireAuth, async (req, res) => {
         updated_at`,
       [postId, req.user.id, content]
     );
+
+    await createNotification({
+      recipientId: postCheck.rows[0].user_id,
+      actorId: req.user.id,
+      type: "comment",
+      postId,
+      commentId: result.rows[0].id
+    });
 
     const author = await query(
       `SELECT
@@ -691,7 +729,9 @@ router.put("/:id/repost", requireAuth, async (req, res) => {
     const postId = String(req.params.id);
 
     const postCheck = await query(
-      `SELECT id
+      `SELECT
+        id,
+        user_id
        FROM posts
        WHERE id = $1`,
       [postId]
@@ -717,6 +757,18 @@ router.put("/:id/repost", requireAuth, async (req, res) => {
         created_at`,
       [postId, req.user.id]
     );
+
+    if (
+      result.rows.length > 0 &&
+      postCheck.rows[0].user_id !== req.user.id
+    ) {
+      await createNotification({
+        recipientId: postCheck.rows[0].user_id,
+        actorId: req.user.id,
+        type: "repost",
+        postId
+      });
+    }
 
     const countResult = await query(
       `SELECT COUNT(*)::int AS repost_count

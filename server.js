@@ -11,6 +11,7 @@ const authRoutes = require("./server/routes/auth");
 const profileRoutes = require("./server/routes/profile");
 const searchRoutes = require("./server/routes/search");
 const postsRoutes = require("./server/routes/posts");
+const notificationsRoutes = require("./server/routes/notifications");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -83,6 +84,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/posts", postsRoutes);
+app.use("/api/notifications", notificationsRoutes);
 
 // --------------------------------------------------
 // API 404

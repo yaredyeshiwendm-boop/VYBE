@@ -142,6 +142,7 @@ async function checkSession() {
     if (data.success && data.user) {
       state.user = data.user;
       state.authenticated = true;
+      loadActivityNotifications();
       showHome();
       return true;
     }
@@ -190,6 +191,7 @@ async function handleLogin(event) {
 
     state.user = data.user;
     state.authenticated = true;
+    loadActivityNotifications();
 
     loginForm.reset();
 
@@ -267,6 +269,7 @@ async function handleRegister(event) {
 
     state.user = data.user;
     state.authenticated = true;
+    loadActivityNotifications();
 
     registerForm.reset();
 
@@ -3332,10 +3335,250 @@ document
   });
 
 /* --------------------------------
-   ACTIVITY SCREEN
+   ACTIVITY / NOTIFICATIONS SCREEN
 -------------------------------- */
 
 let activityScreen = null;
+let activityNotifications = [];
+let activityUnreadCount = 0;
+
+function notificationText(notification) {
+  const name = notification.actor_display_name ||
+    notification.actor_username ||
+    "Someone";
+
+  switch (notification.type) {
+    case "follow":
+      return `${name} started following you`;
+    case "reaction":
+      return `${name} reacted to your post`;
+    case "comment":
+      return `${name} commented on your post`;
+    case "repost":
+      return `${name} reposted your post`;
+    default:
+      return `${name} interacted with you`;
+  }
+}
+
+function notificationIcon(type) {
+  switch (type) {
+    case "follow":
+      return "♡";
+    case "reaction":
+      return "♥";
+    case "comment":
+      return "💬";
+    case "repost":
+      return "↻";
+    default:
+      return "•";
+  }
+}
+
+function formatNotificationTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const diff = Math.max(0, Date.now() - date.getTime());
+  const minutes = Math.floor(diff / 60000);
+
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 1440) return `${Math.floor(minutes / 60)}h`;
+  if (minutes < 10080) return `${Math.floor(minutes / 1440)}d`;
+
+  return date.toLocaleDateString();
+}
+
+function renderActivityNotifications() {
+  if (!activityScreen) return;
+
+  const content = activityScreen.querySelector(".activity-content");
+
+  if (!activityNotifications.length) {
+    content.innerHTML = `
+      <div class="activity-empty">
+        <div class="activity-empty-icon">♡</div>
+        <h2>No activity yet</h2>
+        <p>
+          Your likes, follows, comments and reposts
+          will appear here.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="activity-list">
+      ${activityNotifications.map(notification => {
+        const unread = !notification.read_at;
+
+        return `
+          <button
+            class="activity-item ${unread ? "is-unread" : ""}"
+            type="button"
+            data-notification-id="${notification.id}"
+          >
+            <div class="activity-avatar">
+              ${notification.actor_avatar_url
+                ? `<img src="${escapeHtml(notification.actor_avatar_url)}" alt="">`
+                : escapeHtml(
+                    (notification.actor_display_name ||
+                     notification.actor_username ||
+                     "?").charAt(0).toUpperCase()
+                  )
+              }
+            </div>
+
+            <div class="activity-item-main">
+              <div class="activity-item-text">
+                <span class="activity-icon">
+                  ${notificationIcon(notification.type)}
+                </span>
+                <span>${escapeHtml(notificationText(notification))}</span>
+              </div>
+
+              <div class="activity-item-time">
+                ${formatNotificationTime(notification.created_at)}
+              </div>
+            </div>
+
+            ${unread ? '<span class="activity-unread-dot"></span>' : ""}
+          </button>
+        `;
+      }).join("")}
+    </div>
+
+    ${activityUnreadCount > 0 ? `
+      <button
+        id="markAllNotificationsRead"
+        class="activity-read-all"
+        type="button"
+      >
+        Mark all as read
+      </button>
+    ` : ""}
+  `;
+
+  content.querySelectorAll("[data-notification-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.notificationId;
+
+      await api(`/api/notifications/${encodeURIComponent(id)}/read`, {
+        method: "PUT"
+      });
+
+      const notification = activityNotifications.find(item => item.id === id);
+
+      if (notification && !notification.read_at) {
+        notification.read_at = new Date().toISOString();
+        activityUnreadCount = Math.max(0, activityUnreadCount - 1);
+      }
+
+      updateNotificationBadge();
+      renderActivityNotifications();
+    });
+  });
+
+  const readAllButton =
+    content.querySelector("#markAllNotificationsRead");
+
+  if (readAllButton) {
+    readAllButton.addEventListener("click", markAllNotificationsRead);
+  }
+}
+
+async function loadActivityNotifications() {
+  try {
+    const data = await api("/api/notifications");
+
+    if (!data.success) {
+      throw new Error(data.error || "Could not load notifications");
+    }
+
+    activityNotifications = Array.isArray(data.notifications)
+      ? data.notifications
+      : [];
+
+    activityUnreadCount = Number(data.unread_count) || 0;
+
+    updateNotificationBadge();
+    renderActivityNotifications();
+  } catch (error) {
+    console.error("Activity notifications error:", error);
+
+    const content = activityScreen?.querySelector(".activity-content");
+
+    if (content) {
+      content.innerHTML = `
+        <div class="activity-empty">
+          <div class="activity-empty-icon">!</div>
+          <h2>Could not load activity</h2>
+          <p>Please try again.</p>
+          <button
+            id="retryActivity"
+            class="activity-retry"
+            type="button"
+          >
+            Retry
+          </button>
+        </div>
+      `;
+
+      content
+        .querySelector("#retryActivity")
+        ?.addEventListener("click", loadActivityNotifications);
+    }
+  }
+}
+
+async function markAllNotificationsRead() {
+  try {
+    const data = await api("/api/notifications/read-all", {
+      method: "PUT"
+    });
+
+    if (!data.success) {
+      throw new Error(data.error || "Could not mark notifications as read");
+    }
+
+    activityNotifications.forEach(notification => {
+      notification.read_at = notification.read_at ||
+        new Date().toISOString();
+    });
+
+    activityUnreadCount = 0;
+
+    updateNotificationBadge();
+    renderActivityNotifications();
+  } catch (error) {
+    console.error("Mark notifications read error:", error);
+  }
+}
+
+function updateNotificationBadge() {
+  const button = document.querySelector("#notificationsButton");
+  if (!button) return;
+
+  button.classList.toggle("has-unread", activityUnreadCount > 0);
+
+  let badge = button.querySelector(".notification-badge");
+
+  if (activityUnreadCount > 0) {
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "notification-badge";
+      button.appendChild(badge);
+    }
+
+    badge.textContent =
+      activityUnreadCount > 99 ? "99+" : String(activityUnreadCount);
+  } else if (badge) {
+    badge.remove();
+  }
+}
 
 function showActivity() {
   hide(splashScreen);
@@ -3359,12 +3602,8 @@ function showActivity() {
 
       <main class="activity-content">
         <div class="activity-empty">
-          <div class="activity-empty-icon">♡</div>
-          <h2>No activity yet</h2>
-          <p>
-            Your likes, follows, comments and other
-            notifications will appear here.
-          </p>
+          <div class="activity-empty-icon">…</div>
+          <h2>Loading activity</h2>
         </div>
       </main>
     `;
@@ -3373,6 +3612,25 @@ function showActivity() {
   }
 
   show(activityScreen);
+  loadActivityNotifications();
+}
+
+document
+  .querySelector('[data-nav="activity"]')
+  .addEventListener("click", event => {
+    event.preventDefault();
+    showActivity();
+  });
+
+document
+  .querySelector("#notificationsButton")
+  ?.addEventListener("click", event => {
+    event.preventDefault();
+    showActivity();
+  });
+
+if (state.authenticated) {
+  loadActivityNotifications();
 }
 
 document

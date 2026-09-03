@@ -1909,3 +1909,166 @@ body.comments-open {
   margin: 0;
   line-height: 1.5;
 }
+
+/* --------------------------------
+   ACTIVITY / NOTIFICATIONS
+-------------------------------- */
+
+.activity-screen {
+  min-height: 100vh;
+  padding: 18px 16px 100px;
+}
+
+.activity-topbar {
+  padding: 4px 0 18px;
+}
+
+.activity-topbar h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.activity-content {
+  width: 100%;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.activity-item.is-unread {
+  background: rgba(255,255,255,.06);
+}
+
+.activity-item:active {
+  transform: scale(.99);
+}
+
+.activity-avatar {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: rgba(255,255,255,.12);
+  font-weight: 700;
+}
+
+.activity-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.activity-item-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.activity-item-text {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1.35;
+}
+
+.activity-icon {
+  flex: 0 0 auto;
+}
+
+.activity-item-time {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: .5;
+}
+
+.activity-unread-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.activity-read-all,
+.activity-retry {
+  display: block;
+  margin: 18px auto 0;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255,255,255,.08);
+  color: inherit;
+  cursor: pointer;
+}
+
+.activity-empty {
+  padding: 60px 20px;
+  text-align: center;
+  opacity: .7;
+}
+
+.activity-empty-icon {
+  font-size: 42px;
+  margin-bottom: 12px;
+}
+
+.activity-empty h2 {
+  margin: 0 0 8px;
+  opacity: 1;
+}
+
+.activity-empty p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+#notificationsButton {
+  position: relative;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 700;
+  background: currentColor;
+}
+
+@media (max-width: 600px) {
+  .activity-screen {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .activity-item {
+    padding: 11px 8px;
+  }
+}

@@ -221,3 +221,48 @@ CREATE INDEX IF NOT EXISTS idx_reports_reporter
 
 CREATE INDEX IF NOT EXISTS idx_reports_status
     ON reports (status, created_at DESC);
+
+-- ========================================
+-- VYBE NOTIFICATIONS
+-- ========================================
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    recipient_id UUID NOT NULL
+        REFERENCES users(id) ON DELETE CASCADE,
+
+    actor_id UUID
+        REFERENCES users(id) ON DELETE SET NULL,
+
+    type VARCHAR(30) NOT NULL,
+
+    post_id UUID
+        REFERENCES posts(id) ON DELETE CASCADE,
+
+    comment_id UUID
+        REFERENCES comments(id) ON DELETE CASCADE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    read_at TIMESTAMPTZ,
+
+    CONSTRAINT notification_type_valid
+        CHECK (
+            type IN (
+                'follow',
+                'reaction',
+                'comment',
+                'repost'
+            )
+        )
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient_created
+    ON notifications (recipient_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient_unread
+    ON notifications (recipient_id, read_at, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_actor
+    ON notifications (actor_id);
