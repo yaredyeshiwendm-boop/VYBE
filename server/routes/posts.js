@@ -45,10 +45,28 @@ router.get("/", optionalAuth, async (req, res) => {
         u.is_verified,
 
         (
-          SELECT COUNT(*)
-          FROM reactions r
-          WHERE r.post_id = p.id
-        )::int AS reaction_count,
+  SELECT COUNT(*)
+  FROM reactions r
+  WHERE r.post_id = p.id
+)::int AS reaction_count,
+
+(
+  SELECT COALESCE(
+    json_object_agg(
+      r.reaction_type,
+      r.reaction_count
+    ),
+    '{}'::json
+  )
+  FROM (
+    SELECT
+      reaction_type,
+      COUNT(*)::int AS reaction_count
+    FROM reactions
+    WHERE post_id = p.id
+    GROUP BY reaction_type
+  ) r
+) AS reaction_counts,
 
         (
           SELECT r.reaction_type
@@ -56,7 +74,33 @@ router.get("/", optionalAuth, async (req, res) => {
           WHERE r.post_id = p.id
             AND r.user_id = $1
           LIMIT 1
-        ) AS viewer_reaction
+        ) AS viewer_reaction,
+
+        (
+          SELECT COUNT(*)
+          FROM reposts rp
+          WHERE rp.post_id = p.id
+        )::int AS repost_count,
+
+        EXISTS (
+          SELECT 1
+          FROM reposts rp
+          WHERE rp.post_id = p.id
+            AND rp.user_id = $1
+        ) AS viewer_reposted,
+
+        (
+          SELECT COUNT(*)
+          FROM saves sp
+          WHERE sp.post_id = p.id
+        )::int AS save_count,
+
+        EXISTS (
+          SELECT 1
+          FROM saves sp
+          WHERE sp.post_id = p.id
+            AND sp.user_id = $1
+        ) AS viewer_saved
 
        FROM posts p
 
@@ -229,7 +273,25 @@ router.put("/:id/reaction", requireAuth, async (req, res) => {
     res.json({
       success: true,
       reaction: result.rows[0],
-      reaction_count: countResult.rows[0].reaction_count
+      reaction_count: countResult.rows[0].reaction_count,
+      reaction_counts: (
+        await query(
+          `SELECT
+             COALESCE(
+               json_object_agg(reaction_type, reaction_count),
+               '{}'::json
+             ) AS reaction_counts
+           FROM (
+             SELECT
+               reaction_type,
+               COUNT(*)::int AS reaction_count
+             FROM reactions
+             WHERE post_id = $1
+             GROUP BY reaction_type
+           ) counts`,
+          [postId]
+        )
+      ).rows[0].reaction_counts
     });
   } catch (error) {
     console.error("Set reaction error:", error);
@@ -271,7 +333,25 @@ router.delete("/:id/reaction", requireAuth, async (req, res) => {
     res.json({
       success: true,
       removed: result.rows.length > 0,
-      reaction_count: countResult.rows[0].reaction_count
+      reaction_count: countResult.rows[0].reaction_count,
+      reaction_counts: (
+        await query(
+          `SELECT
+             COALESCE(
+               json_object_agg(reaction_type, reaction_count),
+               '{}'::json
+             ) AS reaction_counts
+           FROM (
+             SELECT
+               reaction_type,
+               COUNT(*)::int AS reaction_count
+             FROM reactions
+             WHERE post_id = $1
+             GROUP BY reaction_type
+           ) counts`,
+          [postId]
+        )
+      ).rows[0].reaction_counts
     });
   } catch (error) {
     console.error("Remove reaction error:", error);
@@ -360,7 +440,33 @@ router.get("/user/:username", optionalAuth, async (req, res) => {
           WHERE r.post_id = p.id
             AND r.user_id = $2
           LIMIT 1
-        ) AS viewer_reaction
+        ) AS viewer_reaction,
+
+        (
+          SELECT COUNT(*)
+          FROM reposts rp
+          WHERE rp.post_id = p.id
+        )::int AS repost_count,
+
+        EXISTS (
+          SELECT 1
+          FROM reposts rp
+          WHERE rp.post_id = p.id
+            AND rp.user_id = $2
+        ) AS viewer_reposted,
+
+        (
+          SELECT COUNT(*)
+          FROM saves sp
+          WHERE sp.post_id = p.id
+        )::int AS save_count,
+
+        EXISTS (
+          SELECT 1
+          FROM saves sp
+          WHERE sp.post_id = p.id
+            AND sp.user_id = $2
+        ) AS viewer_saved
 
        FROM posts p
 
@@ -574,5 +680,207 @@ router.delete(
     }
   }
 );
+
+
+/*
+ * PUT /api/posts/:id/repost
+ * Repost current user's post
+ */
+router.put("/:id/repost", requireAuth, async (req, res) => {
+  try {
+    const postId = String(req.params.id);
+
+    const postCheck = await query(
+      `SELECT id
+       FROM posts
+       WHERE id = $1`,
+      [postId]
+    );
+
+    if (postCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Post not found"
+      });
+    }
+
+    const result = await query(
+      `INSERT INTO reposts
+        (post_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (post_id, user_id)
+       DO NOTHING
+       RETURNING
+        id,
+        post_id,
+        user_id,
+        created_at`,
+      [postId, req.user.id]
+    );
+
+    const countResult = await query(
+      `SELECT COUNT(*)::int AS repost_count
+       FROM reposts
+       WHERE post_id = $1`,
+      [postId]
+    );
+
+    res.json({
+      success: true,
+      reposted: true,
+      created: result.rows.length > 0,
+      repost: result.rows[0] || null,
+      repost_count: countResult.rows[0].repost_count
+    });
+  } catch (error) {
+    console.error("Create repost error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not repost post"
+    });
+  }
+});
+
+
+/*
+ * DELETE /api/posts/:id/repost
+ * Remove current user's repost
+ */
+router.delete("/:id/repost", requireAuth, async (req, res) => {
+  try {
+    const postId = String(req.params.id);
+
+    const result = await query(
+      `DELETE FROM reposts
+       WHERE post_id = $1
+         AND user_id = $2
+       RETURNING id`,
+      [postId, req.user.id]
+    );
+
+    const countResult = await query(
+      `SELECT COUNT(*)::int AS repost_count
+       FROM reposts
+       WHERE post_id = $1`,
+      [postId]
+    );
+
+    res.json({
+      success: true,
+      reposted: false,
+      removed: result.rows.length > 0,
+      repost_count: countResult.rows[0].repost_count
+    });
+  } catch (error) {
+    console.error("Remove repost error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not remove repost"
+    });
+  }
+});
+
+
+/*
+ * PUT /api/posts/:id/save
+ * Save current user's post
+ */
+router.put("/:id/save", requireAuth, async (req, res) => {
+  try {
+    const postId = String(req.params.id);
+
+    const postCheck = await query(
+      `SELECT id
+       FROM posts
+       WHERE id = $1`,
+      [postId]
+    );
+
+    if (postCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Post not found"
+      });
+    }
+
+    const result = await query(
+      `INSERT INTO saves
+        (post_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (post_id, user_id)
+       DO NOTHING
+       RETURNING
+        id,
+        post_id,
+        user_id,
+        created_at`,
+      [postId, req.user.id]
+    );
+
+    const countResult = await query(
+      `SELECT COUNT(*)::int AS save_count
+       FROM saves
+       WHERE post_id = $1`,
+      [postId]
+    );
+
+    res.json({
+      success: true,
+      saved: true,
+      created: result.rows.length > 0,
+      save: result.rows[0] || null,
+      save_count: countResult.rows[0].save_count
+    });
+  } catch (error) {
+    console.error("Save post error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not save post"
+    });
+  }
+});
+
+
+/*
+ * DELETE /api/posts/:id/save
+ * Remove current user's saved post
+ */
+router.delete("/:id/save", requireAuth, async (req, res) => {
+  try {
+    const postId = String(req.params.id);
+
+    const result = await query(
+      `DELETE FROM saves
+       WHERE post_id = $1
+         AND user_id = $2
+       RETURNING id`,
+      [postId, req.user.id]
+    );
+
+    const countResult = await query(
+      `SELECT COUNT(*)::int AS save_count
+       FROM saves
+       WHERE post_id = $1`,
+      [postId]
+    );
+
+    res.json({
+      success: true,
+      saved: false,
+      removed: result.rows.length > 0,
+      save_count: countResult.rows[0].save_count
+    });
+  } catch (error) {
+    console.error("Unsave post error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not unsave post"
+    });
+  }
+});
 
 module.exports = router;

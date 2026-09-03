@@ -670,6 +670,11 @@ async function showPublicProfile(username) {
             Follow
           </button>
 
+          <div
+            id="publicProfilePosts"
+            class="public-profile-posts"
+          ></div>
+
           <div id="publicProfilePostsEmpty" class="profile-empty">
             <div>✦</div>
             <h2>No posts yet</h2>
@@ -695,9 +700,310 @@ async function showPublicProfile(username) {
     renderPublicProfile(activePublicProfile);
     show(screen);
 
+    await loadPublicProfilePosts(activePublicProfile.username);
+
   } catch (error) {
     alert(error.message || "Could not load profile.");
   }
+}
+
+async function loadPublicProfilePosts(username) {
+  const empty = document.getElementById("publicProfilePostsEmpty");
+
+  if (!empty) return;
+
+  try {
+    const data = await api(
+      `/api/posts/user/${encodeURIComponent(username)}`
+    );
+
+    const posts = data.posts || [];
+
+    if (posts.length === 0) {
+      empty.hidden = false;
+      empty.innerHTML = `
+        <div>✦</div>
+        <h2>No posts yet</h2>
+        <p>This VYBER hasn't posted anything yet.</p>
+      `;
+      return;
+    }
+
+    empty.hidden = true;
+
+    const container =
+      document.getElementById("publicProfilePosts");
+
+    if (!container) {
+      const postsContainer = document.createElement("div");
+      postsContainer.id = "publicProfilePosts";
+      postsContainer.className = "public-profile-posts";
+
+      empty.parentNode.insertBefore(
+        postsContainer,
+        empty
+      );
+    }
+
+    renderPublicProfilePosts(posts);
+
+  } catch (error) {
+    console.error("Public profile posts error:", error);
+
+    empty.hidden = false;
+    empty.innerHTML = `
+      <div>⚠</div>
+      <h2>Couldn't load posts</h2>
+      <p>Please try again.</p>
+    `;
+  }
+}
+
+function renderPublicProfilePosts(posts) {
+  const container =
+    document.getElementById("publicProfilePosts");
+
+  if (!container) return;
+
+  container.innerHTML = posts.map(post => {
+    const name =
+      post.display_name ||
+      post.username ||
+      "VYBER";
+
+    const initial =
+      name.charAt(0).toUpperCase();
+
+    const date =
+      new Date(post.created_at).toLocaleString();
+
+    const reactionCount =
+      Number(post.reaction_count || 0);
+
+    const viewerReaction =
+      post.viewer_reaction || "";
+
+    const repostCount =
+      Number(post.repost_count || 0);
+
+    const saveCount =
+      Number(post.save_count || 0);
+
+    return `
+      <article
+        class="post-card public-profile-post"
+        data-post-id="${escapeHtml(post.id)}"
+        data-viewer-reaction="${escapeHtml(viewerReaction)}"
+        data-viewer-reposted="${post.viewer_reposted ? "true" : "false"}"
+        data-repost-count="${repostCount}"
+        data-viewer-saved="${post.viewer_saved ? "true" : "false"}"
+        data-save-count="${saveCount}"
+      >
+
+        <div class="post-author">
+
+          <div class="post-avatar">
+            ${escapeHtml(initial)}
+          </div>
+
+          <div class="post-author-info">
+            <strong class="post-author-name">
+              ${escapeHtml(name)}
+              ${post.is_verified ? " ✓" : ""}
+            </strong>
+
+            <span
+              class="post-author-username"
+              data-username="${escapeHtml(post.username)}"
+            >
+              @${escapeHtml(post.username)}
+              · ${escapeHtml(date)}
+            </span>
+          </div>
+
+        </div>
+
+        <div class="post-content">
+          ${escapeHtml(post.content)}
+        </div>
+
+        <div
+          class="post-comments-trigger"
+          data-comment-post="${escapeHtml(post.id)}"
+          role="button"
+          tabindex="0"
+          aria-label="View comments"
+        >
+          <span class="comments-trigger-icon">💬</span>
+          <span class="comments-trigger-text">
+            View comments
+          </span>
+          <span
+            class="comment-count"
+            data-comment-count="${escapeHtml(post.id)}"
+          >
+            0
+          </span>
+        </div>
+
+        <div
+          class="reaction-summary"
+          data-reaction-summary="${escapeHtml(post.id)}"
+          aria-label="Post reactions"
+        >
+          <span class="reaction-summary-icon">
+            ${viewerReaction
+              ? getReactionIcon(viewerReaction)
+              : "♡"}
+          </span>
+
+          <span class="reaction-summary-count">
+            ${reactionCount}
+          </span>
+        </div>
+
+        <div class="post-actions">
+
+          <button
+            type="button"
+            class="post-action-button"
+            data-repost-post="${escapeHtml(post.id)}"
+          >
+            🔄 <span data-repost-label>Repost</span>
+            <span data-repost-count>
+              ${repostCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            class="post-action-button"
+            data-share-post="${escapeHtml(post.id)}"
+          >
+            ↗ Share
+          </button>
+
+        </div>
+
+        <div
+          class="post-action-menu hidden"
+          data-post-menu="${escapeHtml(post.id)}"
+        >
+
+          <div class="menu-quick-reactions">
+
+            ${QUICK_REACTIONS.map(reaction => `
+              <button
+                type="button"
+                class="menu-reaction"
+                data-menu-reaction="${escapeHtml(reaction.type)}"
+                aria-label="${escapeHtml(reaction.label)}"
+              >
+                ${reaction.icon}
+              </button>
+            `).join("")}
+
+            <button
+              type="button"
+              class="menu-more-reactions"
+              data-menu-more-reactions
+              aria-expanded="false"
+            >
+              ↓
+            </button>
+
+          </div>
+
+          <div
+            class="menu-more-reactions-panel hidden"
+            data-more-reactions="${escapeHtml(post.id)}"
+          >
+            ${ALL_REACTIONS.map(reaction => `
+              <button
+                type="button"
+                class="menu-reaction"
+                data-menu-reaction="${escapeHtml(reaction.type)}"
+                aria-label="${escapeHtml(reaction.label)}"
+              >
+                ${reaction.icon}
+              </button>
+            `).join("")}
+          </div>
+
+          <button
+            type="button"
+            class="post-menu-item"
+            data-menu-save="${escapeHtml(post.id)}"
+          >
+            <span class="menu-item-icon">🔖</span>
+            <span>Save</span>
+          </button>
+
+          <button
+            type="button"
+            class="post-menu-item"
+            data-menu-repost="${escapeHtml(post.id)}"
+          >
+            <span class="menu-item-icon">🔄</span>
+            <span>Repost</span>
+          </button>
+
+          <button
+            type="button"
+            class="post-menu-item"
+            data-menu-share="${escapeHtml(post.id)}"
+          >
+            <span class="menu-item-icon">↗</span>
+            <span>Share</span>
+          </button>
+
+          <button
+            type="button"
+            class="post-menu-item"
+            data-menu-forward="${escapeHtml(post.id)}"
+          >
+            <span class="menu-item-icon">➤</span>
+            <span>Forward</span>
+          </button>
+
+          <button
+            type="button"
+            class="post-menu-item"
+            data-menu-report="${escapeHtml(post.id)}"
+          >
+            <span class="menu-item-icon">⚑</span>
+            <span>Report</span>
+          </button>
+
+          <button
+            type="button"
+            class="post-menu-item"
+            data-menu-copy="${escapeHtml(post.id)}"
+          >
+            <span class="menu-item-icon">⧉</span>
+            <span>Copy</span>
+          </button>
+
+          <button
+            type="button"
+            class="post-menu-item"
+            data-menu-copy-link="${escapeHtml(post.id)}"
+          >
+            <span class="menu-item-icon">🔗</span>
+            <span>Copy link</span>
+          </button>
+
+        </div>
+
+      </article>
+    `;
+  }).join("");
+
+  setupPostInteractions();
+
+  posts.forEach(post => {
+    loadCommentCount(post.id);
+  });
 }
 
 function renderPublicProfile(profile) {

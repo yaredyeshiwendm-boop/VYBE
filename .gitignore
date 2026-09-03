@@ -5,3 +5,5 @@ uploads/*
 npm-debug.log*
 .DS_Store
 vybe-cookies.txt
+.vybe-test-cookie.txt
+public/**/*.before-*
