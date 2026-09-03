@@ -68,6 +68,10 @@ function showHome() {
   hide(authScreen);
   hide(profileScreen);
 
+  if (typeof searchScreen !== "undefined" && searchScreen) {
+    hide(searchScreen);
+  }
+
   show(homeScreen);
 
   updateHome();
@@ -438,8 +442,14 @@ function renderProfile() {
 }
 
 function showProfile() {
+  hide(splashScreen);
   hide(homeScreen);
   hide(authScreen);
+
+  if (typeof searchScreen !== "undefined" && searchScreen) {
+    hide(searchScreen);
+  }
+
   show(profileScreen);
 
   loadProfile();
