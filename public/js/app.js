@@ -3005,7 +3005,7 @@ function renderStories() {
   if (!feed) return;
 
   const ownStory = state.stories.find(
-    story => story.user_id === state.user?.id
+    story => String(story.user_id) === String(state.user?.id)
   );
 
   const users = [];
@@ -3013,78 +3013,91 @@ function renderStories() {
 
   if (ownStory) {
     users.push(ownStory);
-    seen.add(ownStory.user_id);
+    seen.add(String(ownStory.user_id));
   }
 
   for (const story of state.stories) {
-    if (!seen.has(story.user_id)) {
+    const uid = String(story.user_id);
+
+    if (!seen.has(uid)) {
       users.push(story);
-      seen.add(story.user_id);
+      seen.add(uid);
     }
   }
 
-  if (!users.length) {
-    feed.innerHTML = `
+  const addCard = !ownStory
+    ? `
       <button
         class="story-card story-add-card"
         id="emptyAddStory"
         type="button"
+        aria-label="Add your story"
       >
-        <span class="story-add-icon">＋</span>
-        <span>Your story</span>
-      </button>
-    `;
-    return;
-  }
-
-  feed.innerHTML = users.map(story => {
-    const name =
-      story.display_name ||
-      story.username ||
-      "VYBER";
-
-    const initial =
-      name.charAt(0).toUpperCase();
-
-    const viewed =
-      story.viewer_viewed ? " viewed" : "";
-
-    return `
-      <button
-        class="story-card${viewed}"
-        type="button"
-        data-story-user="${escapeHtml(story.user_id)}"
-        aria-label="View ${escapeHtml(name)}'s story"
-      >
-        <span class="story-avatar">
-          ${
-            story.url
-              ? story.media_type === "video"
-                ? `<video
-                     class="story-thumbnail"
-                     src="${escapeHtml(getMediaUrl(story.url))}"
-                     muted
-                     playsinline
-                   ></video>`
-                : `<img
-                     class="story-thumbnail"
-                     src="${escapeHtml(getMediaUrl(story.url))}"
-                     alt=""
-                   >`
-              : escapeHtml(initial)
-          }
+        <span class="story-avatar story-empty-avatar">
+          <span class="story-add-plus">+</span>
         </span>
-
-        <span class="story-name">
-          ${escapeHtml(
-            story.user_id === state.user?.id
-              ? "Your story"
-              : name
-          )}
-        </span>
+        <span class="story-name">Your story</span>
       </button>
-    `;
-  }).join("");
+    `
+    : "";
+
+  feed.innerHTML =
+    addCard +
+    users.map(story => {
+      const name =
+        story.display_name ||
+        story.username ||
+        "VYBER";
+
+      const initial =
+        name.charAt(0).toUpperCase();
+
+      const viewed =
+        story.viewer_viewed ? " viewed" : "";
+
+      const mine =
+        String(story.user_id) === String(state.user?.id);
+
+      return `
+        <button
+          class="story-card${viewed}${mine ? " own-story" : ""}"
+          type="button"
+          data-story-user="${escapeHtml(story.user_id)}"
+          aria-label="View ${escapeHtml(name)}'s story"
+        >
+          <span class="story-avatar">
+
+            ${
+              story.url
+                ? story.media_type === "video"
+                  ? `<video
+                       class="story-thumbnail"
+                       src="${escapeHtml(getMediaUrl(story.url))}"
+                       muted
+                       playsinline
+                     ></video>`
+                  : `<img
+                       class="story-thumbnail"
+                       src="${escapeHtml(getMediaUrl(story.url))}"
+                       alt=""
+                     >`
+                : escapeHtml(initial)
+            }
+
+            ${
+              mine
+                ? `<span class="story-own-plus">+</span>`
+                : ""
+            }
+
+          </span>
+
+          <span class="story-name">
+            ${escapeHtml(mine ? "Your story" : name)}
+          </span>
+        </button>
+      `;
+    }).join("");
 }
 
 function openCreateStory() {
@@ -4362,6 +4375,10 @@ document
   const deleteButton = document.getElementById("storyDeleteButton");
 
   addStoryButton?.addEventListener("click", openCreateStory);
+
+  document.getElementById("topCreateButton")?.addEventListener("click", () => {
+    document.querySelector('[data-nav="create"]')?.click();
+  });
   closeButton?.addEventListener("click", closeCreateStory);
   form?.addEventListener("submit", createStory);
   input?.addEventListener("change", handleStoryMediaSelection);
