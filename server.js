@@ -9,6 +9,7 @@ const cookieParser = require("cookie-parser");
 const { query } = require("./db");
 const authRoutes = require("./server/routes/auth");
 const profileRoutes = require("./server/routes/profile");
+const searchRoutes = require("./server/routes/search");
 const postsRoutes = require("./server/routes/posts");
 
 const app = express();
@@ -80,6 +81,7 @@ app.get("/api/health", async (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/search", searchRoutes);
 app.use("/api/posts", postsRoutes);
 
 // --------------------------------------------------
