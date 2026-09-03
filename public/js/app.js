@@ -3090,3 +3090,222 @@ document
 
 
 
+
+/* --------------------------------
+   SEARCH SYSTEM
+-------------------------------- */
+
+let searchScreen = null;
+let searchTimer = null;
+
+function showSearch() {
+  hide(homeScreen);
+  hide(authScreen);
+  hide(profileScreen);
+
+  if (!searchScreen) {
+    searchScreen = document.createElement("section");
+
+    searchScreen.id = "searchScreen";
+    searchScreen.className = "screen search-screen";
+
+    searchScreen.innerHTML = `
+      <header class="search-topbar">
+        <button
+          type="button"
+          class="search-back"
+          id="searchBack"
+          aria-label="Back"
+        >
+          ←
+        </button>
+
+        <h1>Search</h1>
+      </header>
+
+      <div class="search-input-wrap">
+        <span class="search-input-icon">🔎</span>
+
+        <input
+          id="searchInput"
+          class="search-input"
+          type="search"
+          autocomplete="off"
+          maxlength="50"
+          placeholder="Search people..."
+          aria-label="Search people"
+        />
+      </div>
+
+      <div
+        id="searchResults"
+        class="search-results"
+      >
+        <div class="search-state">
+          <strong>Find people</strong>
+          <span>Search by username or name.</span>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(searchScreen);
+
+    document
+      .getElementById("searchBack")
+      .addEventListener("click", () => {
+        hide(searchScreen);
+        showHome();
+      });
+
+    document
+      .getElementById("searchInput")
+      .addEventListener("input", event => {
+        clearTimeout(searchTimer);
+
+        const value = event.target.value.trim();
+
+        if (!value) {
+          renderSearchState(
+            "Find people",
+            "Search by username or name."
+          );
+          return;
+        }
+
+        renderSearchState(
+          "Searching…",
+          ""
+        );
+
+        searchTimer = setTimeout(
+          () => searchUsers(value),
+          250
+        );
+      });
+  }
+
+  show(searchScreen);
+
+  const input =
+    document.getElementById("searchInput");
+
+  input?.focus();
+}
+
+function renderSearchState(title, message) {
+  const results =
+    document.getElementById("searchResults");
+
+  if (!results) return;
+
+  results.innerHTML = `
+    <div class="search-state">
+      <strong>${escapeHtml(title)}</strong>
+      <span>${escapeHtml(message)}</span>
+    </div>
+  `;
+}
+
+async function searchUsers(term) {
+  try {
+    const data = await api(
+      `/api/search/users?q=${encodeURIComponent(term)}`
+    );
+
+    const users = data.users || [];
+
+    if (users.length === 0) {
+      renderSearchState(
+        "No people found",
+        `No users match "${term}".`
+      );
+      return;
+    }
+
+    const results =
+      document.getElementById("searchResults");
+
+    if (!results) return;
+
+    results.innerHTML = users.map(user => {
+      const name =
+        user.display_name ||
+        user.username ||
+        "VYBE";
+
+      const initial =
+        name.charAt(0).toUpperCase();
+
+      const followers =
+        Number(user.followers_count || 0);
+
+      return `
+        <button
+          type="button"
+          class="search-user"
+          data-search-username="${escapeHtml(
+            user.username
+          )}"
+        >
+          <span class="search-user-avatar">
+            ${escapeHtml(initial)}
+          </span>
+
+          <span class="search-user-info">
+            <span class="search-user-name">
+              ${escapeHtml(name)}
+              ${user.is_verified ? " ✓" : ""}
+            </span>
+
+            <span class="search-user-username">
+              @${escapeHtml(user.username)}
+            </span>
+
+            <span class="search-user-followers">
+              ${followers} follower${followers === 1 ? "" : "s"}
+            </span>
+          </span>
+        </button>
+      `;
+    }).join("");
+
+    results
+      .querySelectorAll("[data-search-username]")
+      .forEach(button => {
+        button.addEventListener("click", () => {
+          showPublicProfile(
+            button.dataset.searchUsername
+          );
+        });
+      });
+
+  } catch (error) {
+    console.error("Search error:", error);
+
+    renderSearchState(
+      "Couldn't search",
+      error.message || "Please try again."
+    );
+  }
+}
+
+/* --------------------------------
+   SEARCH NAVIGATION
+-------------------------------- */
+
+document.addEventListener("click", event => {
+  const navItem = event.target.closest(
+    '.nav-item[data-nav="explore"]'
+  );
+
+  if (!navItem) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!state.authenticated) {
+    return;
+  }
+
+  showSearch();
+});

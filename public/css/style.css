@@ -1738,3 +1738,131 @@ body.comments-open {
     margin-top: 14px;
   }
 }
+
+/* --------------------------------
+   SEARCH SCREEN
+-------------------------------- */
+
+.search-screen {
+  min-height: 100vh;
+  padding: 18px 16px 100px;
+}
+
+.search-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.search-topbar h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.search-input-wrap {
+  position: relative;
+  margin-bottom: 18px;
+}
+
+.search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 16px 13px 44px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  background: rgba(255,255,255,.06);
+  color: inherit;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: rgba(255,255,255,.3);
+}
+
+.search-input-icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.search-user {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(255,255,255,.05);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.search-user:active {
+  transform: scale(.99);
+}
+
+.search-user-avatar {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,.12);
+  font-weight: 700;
+}
+
+.search-user-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.search-user-name {
+  display: block;
+  font-weight: 700;
+}
+
+.search-user-username {
+  display: block;
+  margin-top: 3px;
+  opacity: .65;
+  font-size: 13px;
+}
+
+.search-user-followers {
+  margin-top: 4px;
+  display: block;
+  opacity: .5;
+  font-size: 12px;
+}
+
+.search-state {
+  padding: 36px 16px;
+  text-align: center;
+  opacity: .65;
+}
+
+.search-state strong {
+  display: block;
+  margin-bottom: 6px;
+  opacity: 1;
+}
+
+.search-back {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 24px;
+  cursor: pointer;
+}
