@@ -1866,3 +1866,46 @@ body.comments-open {
   font-size: 24px;
   cursor: pointer;
 }
+
+/* --------------------------------
+   ACTIVITY SCREEN
+-------------------------------- */
+
+.activity-screen {
+  min-height: 100vh;
+  padding: 18px 16px 100px;
+}
+
+.activity-topbar {
+  padding: 4px 0 18px;
+}
+
+.activity-topbar h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.activity-content {
+  width: 100%;
+}
+
+.activity-empty {
+  padding: 60px 20px;
+  text-align: center;
+  opacity: .7;
+}
+
+.activity-empty-icon {
+  font-size: 42px;
+  margin-bottom: 12px;
+}
+
+.activity-empty h2 {
+  margin: 0 0 8px;
+  opacity: 1;
+}
+
+.activity-empty p {
+  margin: 0;
+  line-height: 1.5;
+}

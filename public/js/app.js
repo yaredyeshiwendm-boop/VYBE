@@ -3330,3 +3330,54 @@ document
     event.preventDefault();
     showHome();
   });
+
+/* --------------------------------
+   ACTIVITY SCREEN
+-------------------------------- */
+
+let activityScreen = null;
+
+function showActivity() {
+  hide(splashScreen);
+  hide(homeScreen);
+  hide(authScreen);
+  hide(profileScreen);
+
+  if (typeof searchScreen !== "undefined" && searchScreen) {
+    hide(searchScreen);
+  }
+
+  if (!activityScreen) {
+    activityScreen = document.createElement("section");
+    activityScreen.id = "activityScreen";
+    activityScreen.className = "screen activity-screen";
+
+    activityScreen.innerHTML = `
+      <header class="activity-topbar">
+        <h1>Activity</h1>
+      </header>
+
+      <main class="activity-content">
+        <div class="activity-empty">
+          <div class="activity-empty-icon">♡</div>
+          <h2>No activity yet</h2>
+          <p>
+            Your likes, follows, comments and other
+            notifications will appear here.
+          </p>
+        </div>
+      </main>
+    `;
+
+    document.body.appendChild(activityScreen);
+  }
+
+  show(activityScreen);
+}
+
+document
+  .querySelector('[data-nav="activity"]')
+  .addEventListener("click", event => {
+    event.preventDefault();
+    showActivity();
+  });
