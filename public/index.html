@@ -214,6 +214,9 @@
       <!-- REAL FEED -->
       <div id="postsFeed" class="posts-feed"></div>
 
+    </section>
+
+
       <nav class="bottom-nav">
 
         <button class="nav-item active" data-nav="home" type="button">
@@ -221,18 +224,19 @@
           <small>Home</small>
         </button>
 
+        <button class="nav-item" data-nav="vybz" type="button">
+          <span>▶</span>
+          <small>VYBZ</small>
+        </button>
+
+        <button class="nav-item" data-nav="dm" type="button">
+          <span>✈</span>
+          <small>DM</small>
+        </button>
+
         <button class="nav-item" data-nav="explore" type="button">
           <span>⌕</span>
           <small>Explore</small>
-        </button>
-
-        <button class="create-button" data-nav="create" type="button">
-          +
-        </button>
-
-        <button class="nav-item" data-nav="activity" type="button">
-          <span>♡</span>
-          <small>Activity</small>
         </button>
 
         <button class="nav-item" data-nav="profile" type="button">
@@ -241,9 +245,6 @@
         </button>
 
       </nav>
-
-    </section>
-
 
     <!-- PROFILE -->
     <section id="profileScreen" class="screen profile-screen hidden">
@@ -286,6 +287,10 @@
             <span>Following</span>
           </div>
         </div>
+
+        <button id="profileCreatePostButton" class="profile-create-button" type="button">
+          + Create Post
+        </button>
 
         <button id="editProfileButton" class="profile-edit-button" type="button">
           Edit Profile

@@ -13,6 +13,7 @@ const $ = (selector) => document.querySelector(selector);
 const splashScreen = $("#splashScreen");
 const authScreen = $("#authScreen");
 const homeScreen = $("#homeScreen");
+const bottomNav = $(".bottom-nav");
 
 const loginView = $("#loginView");
 const registerView = $("#registerView");
@@ -29,6 +30,14 @@ function show(element) {
 
 function hide(element) {
   element.classList.add("hidden");
+}
+
+function hideDynamicScreens() {
+  document
+    .querySelectorAll("#vybzScreen, #dmScreen, #searchScreen, #activityScreen")
+    .forEach(screen => {
+      screen.classList.add("hidden");
+    });
 }
 
 function showError(element, message) {
@@ -63,10 +72,14 @@ function setButtonLoading(button, loading, text) {
 function showAuth() {
   hide(splashScreen);
   hide(homeScreen);
+  hide(bottomNav);
   show(authScreen);
 }
 
 function showHome() {
+  hideDynamicScreens();
+  setActiveNav?.("home");
+  show(bottomNav);
   hide(splashScreen);
   hide(authScreen);
   hide(profileScreen);
@@ -446,6 +459,9 @@ function renderProfile() {
 }
 
 function showProfile() {
+  hideDynamicScreens();
+  show(bottomNav);
+  setActiveNav?.("profile");
   hide(splashScreen);
   hide(homeScreen);
   hide(authScreen);
@@ -3771,22 +3787,6 @@ if (createFirstPost) {
 }
 
 
-/*
- * Top create button
- * replaces future alert behavior
- */
-document
-  .querySelectorAll('[data-nav="create"]')
-  .forEach(button => {
-    button.addEventListener(
-      "click",
-      event => {
-        event.preventDefault();
-        openCreatePost();
-      }
-    );
-  });
-
 
 
 
@@ -3798,6 +3798,9 @@ let searchScreen = null;
 let searchTimer = null;
 
 function showSearch() {
+  hideDynamicScreens();
+  show(bottomNav);
+  setActiveNav?.("explore");
   hide(homeScreen);
   hide(authScreen);
   hide(profileScreen);
@@ -4267,6 +4270,8 @@ function updateNotificationBadge() {
 }
 
 function showActivity() {
+  hideDynamicScreens();
+  show(bottomNav);
   hide(splashScreen);
   hide(homeScreen);
   hide(authScreen);
@@ -4302,13 +4307,6 @@ function showActivity() {
 }
 
 document
-  .querySelector('[data-nav="activity"]')
-  .addEventListener("click", event => {
-    event.preventDefault();
-    showActivity();
-  });
-
-document
   .querySelector("#notificationsButton")
   ?.addEventListener("click", event => {
     event.preventDefault();
@@ -4318,13 +4316,6 @@ document
 if (state.authenticated) {
   loadActivityNotifications();
 }
-
-document
-  .querySelector('[data-nav="activity"]')
-  .addEventListener("click", event => {
-    event.preventDefault();
-    showActivity();
-  });
 
 /* VYBE post media picker wiring */
 (() => {
@@ -4377,7 +4368,7 @@ document
   addStoryButton?.addEventListener("click", openCreateStory);
 
   document.getElementById("topCreateButton")?.addEventListener("click", () => {
-    document.querySelector('[data-nav="create"]')?.click();
+    openCreatePost();
   });
   closeButton?.addEventListener("click", closeCreateStory);
   form?.addEventListener("submit", createStory);
@@ -4567,3 +4558,104 @@ document
     }
   );
 })();
+
+/* --------------------------------
+   PROFILE CREATE POST
+-------------------------------- */
+
+document
+  .getElementById("profileCreatePostButton")
+  ?.addEventListener("click", openCreatePost);
+
+
+/* --------------------------------
+   VYBZ / DM NAVIGATION
+-------------------------------- */
+
+function showVybz() {
+  hideDynamicScreens();
+  show(bottomNav);
+  document.querySelectorAll(".screen").forEach(screen => {
+    screen.classList.add("hidden");
+  });
+
+  let screen = document.getElementById("vybzScreen");
+
+  if (!screen) {
+    screen = document.createElement("section");
+    screen.id = "vybzScreen";
+    screen.className = "screen vybz-screen";
+
+    screen.innerHTML = `
+      <header class="simple-screen-topbar">
+        <strong>VYBZ</strong>
+      </header>
+
+      <main class="simple-screen-content">
+        <div class="screen-placeholder">
+          <div class="screen-placeholder-icon">▶</div>
+          <h2>VYBZ</h2>
+          <p>Short photos and videos are coming here.</p>
+        </div>
+      </main>
+    `;
+
+    document.body.appendChild(screen);
+  }
+
+  screen.classList.remove("hidden");
+  setActiveNav("vybz");
+}
+
+function showDM() {
+  hideDynamicScreens();
+  show(bottomNav);
+  document.querySelectorAll(".screen").forEach(screen => {
+    screen.classList.add("hidden");
+  });
+
+  let screen = document.getElementById("dmScreen");
+
+  if (!screen) {
+    screen = document.createElement("section");
+    screen.id = "dmScreen";
+    screen.className = "screen dm-screen";
+
+    screen.innerHTML = `
+      <header class="simple-screen-topbar">
+        <strong>Messages</strong>
+      </header>
+
+      <main class="simple-screen-content">
+        <div class="screen-placeholder">
+          <div class="screen-placeholder-icon">✈</div>
+          <h2>Direct Messages</h2>
+          <p>Your conversations will appear here.</p>
+        </div>
+      </main>
+    `;
+
+    document.body.appendChild(screen);
+  }
+
+  screen.classList.remove("hidden");
+  setActiveNav("dm");
+}
+
+function setActiveNav(navName) {
+  document.querySelectorAll(".nav-item").forEach(item => {
+    item.classList.toggle(
+      "active",
+      item.dataset.nav === navName
+    );
+  });
+}
+
+document
+  .querySelector('[data-nav="vybz"]')
+  ?.addEventListener("click", showVybz);
+
+document
+  .querySelector('[data-nav="dm"]')
+  ?.addEventListener("click", showDM);
+
