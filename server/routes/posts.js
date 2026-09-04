@@ -157,12 +157,34 @@ router.get("/", optionalAuth, async (req, res) => {
  */
 router.post("/", requireAuth, async (req, res) => {
   try {
-    const content = String(req.body.content || "").trim();
+    const content =
+      String(req.body.content || "").trim();
 
-    if (!content) {
+    let mediaIds = req.body.media_ids;
+
+    if (mediaIds === undefined || mediaIds === null) {
+      mediaIds = [];
+    }
+
+    if (!Array.isArray(mediaIds)) {
       return res.status(400).json({
         success: false,
-        error: "Post content is required"
+        error: "media_ids must be an array"
+      });
+    }
+
+    mediaIds = [
+      ...new Set(
+        mediaIds
+          .map(id => String(id || "").trim())
+          .filter(Boolean)
+      )
+    ];
+
+    if (!content && mediaIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Write something or add a photo/video"
       });
     }
 
@@ -171,12 +193,6 @@ router.post("/", requireAuth, async (req, res) => {
         success: false,
         error: "Post cannot exceed 2000 characters"
       });
-    }
-
-    let mediaIds = req.body.media_ids;
-
-    if (mediaIds === undefined || mediaIds === null) {
-      mediaIds = [];
     }
 
     if (!Array.isArray(mediaIds)) {
@@ -580,7 +596,28 @@ router.get("/user/:username", optionalAuth, async (req, res) => {
           FROM saves sp
           WHERE sp.post_id = p.id
             AND sp.user_id = $2
-        ) AS viewer_saved
+        ) AS viewer_saved,
+
+        COALESCE(
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', m.id,
+                'media_type', m.media_type,
+                'url', m.url,
+                'mime_type', m.mime_type,
+                'size_bytes', m.size_bytes,
+                'width', m.width,
+                'height', m.height,
+                'duration_ms', m.duration_ms
+              )
+              ORDER BY m.created_at ASC
+            )
+            FROM media m
+            WHERE m.post_id = p.id
+          ),
+          '[]'::json
+        ) AS media
 
        FROM posts p
 

@@ -635,6 +635,8 @@ async function showPublicProfile(username) {
   if (!username) return;
 
   try {
+    hideDynamicScreens();
+    show(bottomNav);
     const data = await api(
       `/api/profile/${encodeURIComponent(username)}`
     );
@@ -852,69 +854,9 @@ function renderPublicProfilePosts(posts) {
 
         </div>
 
-        <div class="post-content">
-          ${escapeHtml(post.content)}
-        </div>
+${renderVYBEPostMedia(post.media)}
 
-        ${
-          Array.isArray(post.media) && post.media.length
-            ? `
-              <div class="post-media ${post.media.length === 1 ? "single" : post.media.length === 2 ? "two" : post.media.length === 3 ? "three" : "four"}">
-                ${post.media.slice(0, 4).map(media => {
-                  const url = escapeHtml(media.url || "");
-                  const mime = escapeHtml(media.mime_type || "");
 
-                  if (media.media_type === "video") {
-                    return `
-                      <div class="post-media-item">
-                        <video
-                          src="${url}"
-                          controls
-                          preload="metadata"
-                          playsinline
-                          aria-label="Post video"
-                        >
-                          Your browser does not support video playback.
-                        </video>
-                      </div>
-                    `;
-                  }
-
-                  return `
-                    <div class="post-media-item">
-                      <img
-                        src="${url}"
-                        alt="Post image"
-                        loading="lazy"
-                        decoding="async"
-                        onerror="this.closest('.post-media-item').classList.add('media-load-error')"
-                      >
-                    </div>
-                  `;
-                }).join("")}
-              </div>
-            `
-            : ""
-        }
-
-        <div
-          class="post-comments-trigger"
-          data-comment-post="${escapeHtml(post.id)}"
-          role="button"
-          tabindex="0"
-          aria-label="View comments"
-        >
-          <span class="comments-trigger-icon">💬</span>
-          <span class="comments-trigger-text">
-            View comments
-          </span>
-          <span
-            class="comment-count"
-            data-comment-count="${escapeHtml(post.id)}"
-          >
-            0
-          </span>
-        </div>
 
         <div
           class="reaction-summary"
@@ -939,7 +881,7 @@ function renderPublicProfilePosts(posts) {
             class="post-action-button"
             data-repost-post="${escapeHtml(post.id)}"
           >
-            🔄 <span data-repost-label>Repost</span>
+            ${vybeIcon("repost")} <span data-repost-label>Repost</span>
             <span data-repost-count>
               ${repostCount}
             </span>
@@ -950,7 +892,7 @@ function renderPublicProfilePosts(posts) {
             class="post-action-button"
             data-share-post="${escapeHtml(post.id)}"
           >
-            ↗ Share
+            ${vybeIcon("share")} Share
           </button>
 
         </div>
@@ -1005,7 +947,7 @@ function renderPublicProfilePosts(posts) {
             class="post-menu-item"
             data-menu-save="${escapeHtml(post.id)}"
           >
-            <span class="menu-item-icon">🔖</span>
+            <span class="menu-item-icon">${vybeIcon("save")}</span>
             <span>Save</span>
           </button>
 
@@ -1014,7 +956,7 @@ function renderPublicProfilePosts(posts) {
             class="post-menu-item"
             data-menu-repost="${escapeHtml(post.id)}"
           >
-            <span class="menu-item-icon">🔄</span>
+            <span class="menu-item-icon">${vybeIcon("repost")}</span>
             <span>Repost</span>
           </button>
 
@@ -1023,7 +965,7 @@ function renderPublicProfilePosts(posts) {
             class="post-menu-item"
             data-menu-share="${escapeHtml(post.id)}"
           >
-            <span class="menu-item-icon">↗</span>
+            <span class="menu-item-icon">${vybeIcon("share")}</span>
             <span>Share</span>
           </button>
 
@@ -1068,6 +1010,8 @@ function renderPublicProfilePosts(posts) {
       </article>
     `;
   }).join("");
+
+  initVYBEVideoPlayers(container);
 
   setupPostInteractions();
 
@@ -1171,7 +1115,11 @@ async function loadPosts() {
       );
     }
 
-    renderPosts(data.posts || []);
+    state.posts = Array.isArray(data.posts)
+      ? data.posts
+      : [];
+
+    renderPosts(state.posts);
   } catch (error) {
     console.error(error);
 
@@ -1274,28 +1222,108 @@ const viewerReaction =
 
         </div>
 
-        <div class="post-content">
-          ${escapeHtml(post.content)}
-        </div>
-   
-        <div
-          class="post-comments-trigger"
-          data-comment-post="${escapeHtml(post.id)}"
-          role="button"
-          tabindex="0"
-          aria-label="View comments"
-        >
-          <span class="comments-trigger-icon">💬</span>
-          <span class="comments-trigger-text">
-            View comments
-          </span>
-          <span
-            class="comment-count"
-            data-comment-count="${escapeHtml(post.id)}"
+        ${
+          Array.isArray(post.media) && post.media.length
+            ? renderVYBEPostMedia(post.media, {
+                postId: post.id,
+                username: post.username,
+                displayName: name
+              })
+            : `
+              <div class="post-content">
+                ${escapeHtml(post.content || "")}
+              </div>
+            `
+        }
+
+        ${
+          Array.isArray(post.media) &&
+          post.media.length &&
+          post.content
+            ? `
+              <div class="vybe-post-caption">
+                <span class="vybe-caption-label">Caption</span>
+                <div class="vybe-caption-text">
+                  ${escapeHtml(post.content)}
+                </div>
+              </div>
+            `
+            : ""
+        }
+
+        <div class="vybe-post-meta">
+
+          <div class="vybe-post-actions">
+
+            <button
+              type="button"
+              class="vybe-post-action ${post.viewer_reaction === "like" ? "action-active" : ""}"
+              data-vybe-like="${escapeHtml(post.id)}"
+              aria-label="Like"
+              aria-pressed="${post.viewer_reaction === "like" ? "true" : "false"}"
+            >
+              ${vybeIcon("like", Boolean(post.viewer_reaction))}
+              <small>${formatVYBECount(
+                Number(reactionCounts.like || 0)
+              )}</small>
+            </button>
+
+            <button
+              type="button"
+              class="vybe-post-action ${post.viewer_saved ? "action-active" : ""}"
+              data-vybe-save="${escapeHtml(post.id)}"
+              aria-label="Save"
+              aria-pressed="${post.viewer_saved ? "true" : "false"}"
+            >
+              ${vybeIcon("save", Boolean(post.viewer_saved))}
+              <small>${formatVYBECount(
+                Number(post.save_count || 0)
+              )}</small>
+            </button>
+
+            <button
+              type="button"
+              class="vybe-post-action"
+              data-vybe-share="${escapeHtml(post.id)}"
+              aria-label="Share"
+            >
+              ${vybeIcon("share")}
+              <small>Share</small>
+            </button>
+
+            <button
+              type="button"
+              class="vybe-post-action ${post.viewer_reposted ? "action-active" : ""}"
+              data-vybe-repost="${escapeHtml(post.id)}"
+              aria-label="Repost"
+              aria-pressed="${post.viewer_reposted ? "true" : "false"}"
+            >
+              ${vybeIcon("repost", Boolean(post.viewer_reposted))}
+              <small>${formatVYBECount(
+                Number(post.repost_count || 0)
+              )}</small>
+            </button>
+
+          </div>
+
+          <button
+            type="button"
+            class="vybe-post-comments-row"
+            data-vybe-comment="${escapeHtml(post.id)}"
+            aria-label="View comments"
           >
-            0
-          </span>
-        </div>
+            ${vybeIcon("comment")}
+            <span class="vybe-comment-text">
+              View comments
+            </span>
+            <span
+              class="vybe-comment-count"
+              data-comment-count="${escapeHtml(post.id)}"
+            >0</span>
+            <span class="vybe-comment-arrow">›</span>
+          </button>
+
+</div>
 
         <div class="post-actions">
 
@@ -1340,7 +1368,7 @@ const viewerReaction =
               }"
               data-repost-post="${escapeHtml(post.id)}"
             >
-              <span class="action-icon">🔄</span>
+              <span class="action-icon">${vybeIcon("repost")}</span>
               <span class="action-label">
                 Repost${
                   Number(post.repost_count) > 0
@@ -1356,7 +1384,7 @@ const viewerReaction =
               aria-label="Share post"
               data-share-post="${escapeHtml(post.id)}"
             >
-              <span class="action-icon">↗</span>
+              <span class="action-icon">${vybeIcon("share")}</span>
               <span class="action-label">Share</span>
             </button>
 
@@ -1430,7 +1458,7 @@ const viewerReaction =
                 data-menu-save="${escapeHtml(post.id)}"
                 role="menuitem"
               >
-                <span class="menu-item-icon">🔖</span>
+                <span class="menu-item-icon">${vybeIcon("save")}</span>
                 <span class="menu-item-text">
                   ${post.viewer_saved ? "Saved" : "Save"}
                 </span>
@@ -1442,7 +1470,7 @@ const viewerReaction =
                 data-menu-repost="${escapeHtml(post.id)}"
                 role="menuitem"
               >
-                <span class="menu-item-icon">🔄</span>
+                <span class="menu-item-icon">${vybeIcon("repost")}</span>
                 <span class="menu-item-text">Repost</span>
               </button>
 
@@ -1452,7 +1480,7 @@ const viewerReaction =
                 data-menu-share="${escapeHtml(post.id)}"
                 role="menuitem"
               >
-                <span class="menu-item-icon">↗</span>
+                <span class="menu-item-icon">${vybeIcon("share")}</span>
                 <span class="menu-item-text">Share</span>
               </button>
 
@@ -1485,6 +1513,9 @@ const viewerReaction =
     `;
   }).join("");
 
+  initVYBEVideoPlayers(postsFeed);
+  setupVYBEPostActions(postsFeed);
+
   postsFeed
     .querySelectorAll("[data-delete-post]")
     .forEach(button => {
@@ -1495,19 +1526,10 @@ const viewerReaction =
     });
 
   postsFeed
-    .querySelectorAll("[data-comment-post]")
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        () => openComments(button.dataset.commentPost)
-      );
-    });
-
-  postsFeed
-    .querySelectorAll("[data-comment-post]")
+    .querySelectorAll("[data-vybe-comment]")
     .forEach(button => {
       loadCommentCount(
-        button.dataset.commentPost,
+        button.dataset.vybeComment,
         button
       );
     });
@@ -1551,7 +1573,7 @@ function renderComments(comments) {
   if (!comments.length) {
     commentsList.innerHTML = `
       <div class="comments-empty">
-        <div class="comments-empty-icon">💬</div>
+        <div class="comments-empty-icon">${vybeIcon("comment")}</div>
         <strong>No comments yet</strong>
         <p>Be the first to VYBE.</p>
       </div>
@@ -1693,21 +1715,26 @@ async function loadComments(postId) {
 }
 
 function updateCommentCount(postId, count) {
-  const button =
-    postsFeed?.querySelector(
-      `[data-comment-post="${CSS.escape(postId)}"]`
-    );
+  const safePostId = CSS.escape(String(postId));
 
-  if (!button) return;
+  const cards = document.querySelectorAll(
+    `.post-card[data-post-id="${safePostId}"],
+     .vybz-item[data-post-id="${safePostId}"]`
+  );
 
-  const countElement =
-    button.querySelector(
-      `[data-comment-count="${CSS.escape(postId)}"]`
-    );
+  cards.forEach(card => {
+    const countElement =
+      card.querySelector(
+        `[data-comment-count="${safePostId}"]`
+      ) ||
+      card.querySelector(".vybe-comment-count") ||
+      card.querySelector("[data-vybe-comment] small");
 
-  if (countElement) {
-    countElement.textContent = String(count);
-  }
+    if (countElement) {
+      countElement.textContent =
+        formatVYBECount(count);
+    }
+  });
 }
 
 async function loadCommentCount(postId, button) {
@@ -1718,12 +1745,34 @@ async function loadCommentCount(postId, button) {
 
     if (!data.success) return;
 
-    const countElement =
-      button.querySelector(".comment-count");
+    const count =
+      (data.comments || []).length;
 
-    if (countElement) {
+    const safePostId = CSS.escape(String(postId));
+
+    const countElements = document.querySelectorAll(
+      `[data-comment-count="${safePostId}"]`
+    );
+
+    countElements.forEach(countElement => {
       countElement.textContent =
-        String((data.comments || []).length);
+        formatVYBECount(count);
+    });
+
+    if (button) {
+      const fallback =
+        button.querySelector(".vybe-comment-count") ||
+        button.querySelector("small");
+
+      if (
+        fallback &&
+        !fallback.matches(
+          `[data-comment-count="${safePostId}"]`
+        )
+      ) {
+        fallback.textContent =
+          formatVYBECount(count);
+      }
     }
   } catch (error) {
     console.error(
@@ -1756,9 +1805,6 @@ function openComments(postId) {
 
   loadComments(postId);
 
-  setTimeout(() => {
-    commentContent?.focus();
-  }, 50);
 }
 
 function closeComments() {
@@ -2183,6 +2229,11 @@ async function setReaction(
 
     closePostActionMenu(postId);
 
+    syncVYBEHomeActionUI(postId, {
+      liked: currentReaction !== reactionType,
+      likeCount: Number(data.reaction_counts?.like) || 0
+    });
+
     return true;
 
   } catch (error) {
@@ -2213,9 +2264,11 @@ async function toggleRepost(postId) {
 
   if (!card) return;
 
-  const button = card.querySelector(
-    `[data-repost-post="${CSS.escape(postId)}"]`
-  );
+  const safePostId = CSS.escape(String(postId));
+
+  const button =
+    card.querySelector(`[data-vybe-repost="${safePostId}"]`) ||
+    card.querySelector(`[data-repost-post="${safePostId}"]`);
 
   const alreadyReposted =
     card.dataset.viewerReposted === "true";
@@ -2247,6 +2300,11 @@ async function toggleRepost(postId) {
     card.dataset.repostCount =
       String(count);
 
+    syncVYBEHomeActionUI(postId, {
+      reposted: Boolean(data.reposted),
+      repostCount: count
+    });
+
     if (button) {
       button.classList.toggle(
         "action-active",
@@ -2259,7 +2317,7 @@ async function toggleRepost(postId) {
       );
 
       button.innerHTML = `
-        <span class="action-icon">🔄</span>
+        <span class="action-icon">${vybeIcon("repost")}</span>
         <span class="action-label">
           Repost${count > 0 ? ` ${count}` : ""}
         </span>
@@ -2327,6 +2385,11 @@ async function toggleSave(postId) {
     card.dataset.saveCount =
       String(count);
 
+    syncVYBEHomeActionUI(postId, {
+      saved: Boolean(data.saved),
+      saveCount: count
+    });
+
     if (menuSave) {
       menuSave.classList.toggle(
         "menu-item-active",
@@ -2335,7 +2398,7 @@ async function toggleSave(postId) {
 
       menuSave.innerHTML = `
         <span class="menu-item-icon">
-          ${data.saved ? "🔖" : "🔖"}
+          ${vybeIcon("save", Boolean(data.saved))}
         </span>
         <span>
           ${data.saved ? "Saved" : "Save"}
@@ -2358,6 +2421,132 @@ async function toggleSave(postId) {
   }
 }
 
+
+
+function syncVYBEHomeActionUI(postId, values = {}) {
+  const id = String(postId);
+  const safeId = CSS.escape(id);
+
+  document
+    .querySelectorAll(`.post-card[data-post-id="${safeId}"]`)
+    .forEach(card => {
+
+      if (
+        values.liked !== undefined ||
+        values.likeCount !== undefined
+      ) {
+        const button = card.querySelector(
+          `[data-vybe-like="${safeId}"]`
+        );
+
+        if (button) {
+          const count = Number(values.likeCount) || 0;
+
+          button.classList.toggle(
+            "action-active",
+            Boolean(values.liked)
+          );
+
+          button.setAttribute(
+            "aria-pressed",
+            values.liked ? "true" : "false"
+          );
+
+          const icon = button.querySelector("span");
+          const countEl = button.querySelector("small");
+
+          if (icon) {
+            icon.innerHTML = vybeIcon("like", Boolean(values.liked));
+          }
+
+          if (countEl) {
+            countEl.textContent = formatVYBECount(count);
+          }
+        }
+
+        card.dataset.viewerReaction =
+          values.liked ? "like" : "";
+
+        card.dataset.likeCount =
+          String(Number(values.likeCount) || 0);
+      }
+
+      if (
+        values.saved !== undefined ||
+        values.saveCount !== undefined
+      ) {
+        const button = card.querySelector(
+          `[data-vybe-save="${safeId}"]`
+        );
+
+        if (button) {
+          const count = Number(values.saveCount) || 0;
+
+          button.classList.toggle(
+            "action-active",
+            Boolean(values.saved)
+          );
+
+          button.setAttribute(
+            "aria-pressed",
+            values.saved ? "true" : "false"
+          );
+
+          const countEl = button.querySelector("small");
+
+          if (countEl) {
+            countEl.textContent = formatVYBECount(count);
+          }
+        }
+
+        card.dataset.viewerSaved =
+          values.saved ? "true" : "false";
+
+        card.dataset.saveCount =
+          String(Number(values.saveCount) || 0);
+      }
+
+      if (
+        values.reposted !== undefined ||
+        values.repostCount !== undefined
+      ) {
+        const button = card.querySelector(
+          `[data-vybe-repost="${safeId}"]`
+        );
+
+        if (button) {
+          const count = Number(values.repostCount) || 0;
+
+          button.classList.toggle(
+            "action-active",
+            Boolean(values.reposted)
+          );
+
+          button.setAttribute(
+            "aria-pressed",
+            values.reposted ? "true" : "false"
+          );
+
+          const icon = button.querySelector("span");
+          const countEl = button.querySelector("small");
+
+          if (icon) {
+            icon.innerHTML = vybeIcon("repost", Boolean(values.reposted));
+          }
+
+          if (countEl) {
+            countEl.textContent = formatVYBECount(count);
+          }
+        }
+
+        card.dataset.viewerReposted =
+          values.reposted ? "true" : "false";
+
+        card.dataset.repostCount =
+          String(Number(values.repostCount) || 0);
+      }
+    });
+}
 
 async function sharePost(postId) {
   const card = getPostCard(postId);
@@ -2568,6 +2757,120 @@ async function reportPost(postId) {
 }
 
 
+function setupVYBEPostActions(root = document) {
+  if (!root?.querySelectorAll) return;
+
+  root.querySelectorAll("[data-vybe-like]").forEach(button => {
+    if (button.dataset.vybeReady === "true") return;
+
+    button.dataset.vybeReady = "true";
+
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      setReaction(
+        button.dataset.vybeLike,
+        "like"
+      );
+    });
+  });
+
+  root.querySelectorAll("[data-vybe-comment]").forEach(button => {
+    if (button.dataset.vybeReady === "true") return;
+
+    button.dataset.vybeReady = "true";
+
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      openComments(button.dataset.vybeComment);
+    });
+  });
+
+  root.querySelectorAll("[data-vybe-save]").forEach(button => {
+    if (button.dataset.vybeReady === "true") return;
+
+    button.dataset.vybeReady = "true";
+
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      toggleSave(button.dataset.vybeSave);
+    });
+  });
+
+  root.querySelectorAll("[data-vybe-repost]").forEach(button => {
+    if (button.dataset.vybeReady === "true") return;
+
+    button.dataset.vybeReady = "true";
+
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      toggleRepost(button.dataset.vybeRepost);
+    });
+  });
+
+  root.querySelectorAll("[data-vybe-share]").forEach(button => {
+    if (button.dataset.vybeReady === "true") return;
+
+    button.dataset.vybeReady = "true";
+
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      sharePost(button.dataset.vybeShare);
+    });
+  });
+
+  root.querySelectorAll("[data-vybe-follow]").forEach(button => {
+    if (button.dataset.vybeReady === "true") return;
+
+    button.dataset.vybeReady = "true";
+
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const username =
+        button.dataset.vybeFollow;
+
+      if (username) {
+        showPublicProfile(username);
+      }
+    });
+  });
+
+  root.querySelectorAll("[data-vybe-open-video]").forEach(videoWrap => {
+    if (videoWrap.dataset.vybeReady === "true") return;
+
+    videoWrap.dataset.vybeReady = "true";
+
+    videoWrap.addEventListener("click", event => {
+      if (
+        event.target.closest("[data-vybe-video-play]") ||
+        event.target.closest("[data-vybe-video-mute]") ||
+        event.target.closest("[data-vybe-video-fullscreen]") ||
+        event.target.closest("[data-vybe-video-progress]")
+      ) {
+        return;
+      }
+
+      const postId =
+        videoWrap.dataset.vybeOpenVideo;
+
+      if (postId) {
+        showVybz(postId);
+      }
+    });
+  });
+}
+
 function setupPostInteractions() {
   const cards = document.querySelectorAll(
     "[data-post-id]"
@@ -2775,7 +3078,7 @@ function setupPostInteractions() {
 
     /*
       Single tap = open menu.
-      Double tap = ❤️.
+      Double tap = Like.
       Long press is intentionally NOT used.
     */
     if (content) {
@@ -2929,7 +3232,7 @@ function setupPostInteractions() {
       );
 
       saveButton.innerHTML = `
-        <span class="menu-item-icon">🔖</span>
+        <span class="menu-item-icon">${vybeIcon("save")}</span>
         <span>${viewerSaved ? "Saved" : "Save"}</span>
       `;
     }
@@ -2956,7 +3259,7 @@ function setupPostInteractions() {
       );
 
       repostButtonState.innerHTML = `
-        <span class="action-icon">🔄</span>
+        <span class="action-icon">${vybeIcon("repost")}</span>
         <span class="action-label">
           Repost${repostCount > 0 ? ` ${repostCount}` : ""}
         </span>
@@ -3171,8 +3474,12 @@ async function handleStoryMediaSelection(event) {
 
     preview.innerHTML =
       media.media_type === "video"
-        ? `<video src="${url}" controls playsinline></video>`
-        : `<img src="${url}" alt="Story preview">`;
+        ? renderVYBEVideoPlayer(media, {
+            compact: true
+          })
+        : `<div class="vybe-story-photo-preview">
+             <img src="${url}" alt="Story preview">
+           </div>`;
 
     preview.classList.remove("hidden");
   } catch (errorValue) {
@@ -3339,7 +3646,7 @@ async function renderActiveStory() {
   }
 
   if (likeButton) {
-    likeButton.textContent = story.viewer_reaction || "♡";
+    likeButton.innerHTML = vybeIcon("like", Boolean(story.viewer_reaction));
   }
 
   content.innerHTML = "";
@@ -3577,16 +3884,15 @@ function renderPostMediaPreview() {
         <div class="post-media-preview-item">
           ${
             isVideo
-              ? `<video
-                   src="${escapeHtml(media.url)}"
-                   muted
-                   playsinline
-                   controls
-                 ></video>`
-              : `<img
-                   src="${escapeHtml(media.url)}"
-                   alt="Selected media"
-                 >`
+              ? renderVYBEVideoPlayer(media, {
+                  compact: true
+                })
+              : `<div class="vybe-photo-trigger">
+                   <img
+                     src="${escapeHtml(media.url)}"
+                     alt="Selected media"
+                   >
+                 </div>`
           }
 
           <button
@@ -3595,7 +3901,9 @@ function renderPostMediaPreview() {
             data-remove-media-index="${index}"
             aria-label="Remove media"
           >
-            ×
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18"/>
+            </svg>
           </button>
         </div>
       `;
@@ -3662,10 +3970,13 @@ async function createPost(event) {
 
   clearError(errorElement);
 
-  if (!content) {
+  if (
+    !content &&
+    !state.createPostMedia.length
+  ) {
     showError(
       errorElement,
-      "Write something before posting."
+      "Write something or add a photo/video."
     );
     return;
   }
@@ -3796,6 +4107,11 @@ if (createFirstPost) {
 
 let searchScreen = null;
 let searchTimer = null;
+let explorePostsLoaded = false;
+
+/* --------------------------------
+   EXPLORE / SEARCH SCREEN
+-------------------------------- */
 
 function showSearch() {
   hideDynamicScreens();
@@ -3813,16 +4129,7 @@ function showSearch() {
 
     searchScreen.innerHTML = `
       <header class="search-topbar">
-        <button
-          type="button"
-          class="search-back"
-          id="searchBack"
-          aria-label="Back"
-        >
-          ←
-        </button>
-
-        <h1>Search</h1>
+        <h1>Explore</h1>
       </header>
 
       <div class="search-input-wrap">
@@ -3842,22 +4149,39 @@ function showSearch() {
       <div
         id="searchResults"
         class="search-results"
-      >
-        <div class="search-state">
-          <strong>Find people</strong>
-          <span>Search by username or name.</span>
+      ></div>
+
+      <section class="explore-discover">
+        <div class="explore-section-title">
+          <div>
+            <strong>Discover on VYBE</strong>
+            <span>Posts from the VYBE community</span>
+          </div>
+
+          <button
+            type="button"
+            class="explore-refresh"
+            id="exploreRefresh"
+            aria-label="Refresh Explore"
+          >
+            ${vybeIcon("repost")}
+          </button>
         </div>
-      </div>
+
+        <div
+          id="exploreGrid"
+          class="explore-grid"
+        >
+          <div class="explore-state">
+            <div class="explore-state-icon">✦</div>
+            <strong>Discovering...</strong>
+            <span>Finding posts for you.</span>
+          </div>
+        </div>
+      </section>
     `;
 
     document.body.appendChild(searchScreen);
-
-    document
-      .getElementById("searchBack")
-      .addEventListener("click", () => {
-        hide(searchScreen);
-        showHome();
-      });
 
     document
       .getElementById("searchInput")
@@ -3867,23 +4191,26 @@ function showSearch() {
         const value = event.target.value.trim();
 
         if (!value) {
-          renderSearchState(
-            "Find people",
-            "Search by username or name."
-          );
+          renderSearchState("", "");
+          loadExplorePosts();
           return;
         }
 
-        renderSearchState(
-          "Searching…",
-          ""
-        );
+        renderSearchState("Searching…", "");
 
         searchTimer = setTimeout(
           () => searchUsers(value),
           250
         );
       });
+
+    document
+      .getElementById("exploreRefresh")
+      ?.addEventListener("click", () => {
+        loadExplorePosts(true);
+      });
+
+    loadExplorePosts();
   }
 
   show(searchScreen);
@@ -3899,6 +4226,11 @@ function renderSearchState(title, message) {
     document.getElementById("searchResults");
 
   if (!results) return;
+
+  if (!title && !message) {
+    results.innerHTML = "";
+    return;
+  }
 
   results.innerHTML = `
     <div class="search-state">
@@ -3992,6 +4324,200 @@ async function searchUsers(term) {
 }
 
 /* --------------------------------
+   EXPLORE DISCOVER GRID
+-------------------------------- */
+
+async function loadExplorePosts(force = false) {
+  if (explorePostsLoaded && !force) return;
+
+  const grid =
+    document.getElementById("exploreGrid");
+
+  if (!grid) return;
+
+  grid.innerHTML = `
+    <div class="explore-state">
+      <div class="explore-state-icon">✦</div>
+      <strong>Discovering...</strong>
+      <span>Finding posts for you.</span>
+    </div>
+  `;
+
+  try {
+    const data = await api("/api/posts");
+
+    const posts = Array.isArray(data.posts)
+      ? data.posts
+      : [];
+
+    explorePostsLoaded = true;
+
+    renderExplorePosts(posts);
+
+  } catch (error) {
+    console.error("Explore posts error:", error);
+
+    grid.innerHTML = `
+      <div class="explore-state">
+        <div class="explore-state-icon">!</div>
+        <strong>Couldn't load Explore</strong>
+        <span>${escapeHtml(
+          error.message || "Please try again."
+        )}</span>
+
+        <button
+          type="button"
+          class="explore-retry"
+          id="exploreRetry"
+        >
+          Try again
+        </button>
+      </div>
+    `;
+
+    document
+      .getElementById("exploreRetry")
+      ?.addEventListener("click", () => {
+        loadExplorePosts(true);
+      });
+  }
+}
+
+function renderExplorePosts(posts) {
+  const grid =
+    document.getElementById("exploreGrid");
+
+  if (!grid) return;
+
+  if (!posts.length) {
+    grid.innerHTML = `
+      <div class="explore-state">
+        <div class="explore-state-icon">✦</div>
+        <strong>No posts yet</strong>
+        <span>Be the first one to post on VYBE.</span>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = posts.map(post => {
+    const media =
+      Array.isArray(post.media)
+        ? post.media[0]
+        : null;
+
+    const username =
+      post.username || "";
+
+    const displayName =
+      post.display_name ||
+      username ||
+      "VYBE";
+
+    if (media?.media_type === "image" && media.url) {
+      return `
+        <button
+          type="button"
+          class="explore-tile vybe-photo-trigger"
+          data-vybe-photo
+          data-photo-url="${escapeHtml(media.url)}"
+          data-photo-alt="${escapeHtml(displayName)} post"
+          data-explore-username="${escapeHtml(username)}"
+        >
+          <img
+            src="${escapeHtml(media.url)}"
+            alt="${escapeHtml(displayName)} post"
+            loading="lazy"
+            decoding="async"
+            onerror="this.closest('.explore-tile').classList.add('explore-media-error')"
+          />
+
+          <span class="explore-tile-overlay">
+            <span>
+              ${escapeHtml(displayName)}
+            </span>
+          </span>
+        </button>
+      `;
+    }
+
+    if (media?.media_type === "video" && media.url) {
+      return `
+        <div
+          class="explore-tile explore-video-tile"
+          data-explore-username="${escapeHtml(username)}"
+        >
+          ${renderVYBEVideoPlayer(media, { compact: true })}
+
+          <span class="explore-tile-overlay">
+            <span>
+              ${escapeHtml(displayName)}
+            </span>
+          </span>
+        </div>
+      `;
+    }
+
+    const text =
+      String(post.content || "").trim();
+
+    const preview =
+      text.length > 90
+        ? `${text.slice(0, 90)}…`
+        : text;
+
+    return `
+      <button
+        type="button"
+        class="explore-tile explore-text-tile"
+        data-explore-username="${escapeHtml(username)}"
+      >
+        <span class="explore-text-icon">✦</span>
+
+        <span class="explore-text-content">
+          ${escapeHtml(preview || "VYBE")}
+        </span>
+
+        <span class="explore-text-author">
+          @${escapeHtml(username)}
+        </span>
+      </button>
+    `;
+  }).join("");
+
+  initVYBEVideoPlayers(grid);
+
+  grid
+    .querySelectorAll("[data-explore-username]")
+    .forEach(tile => {
+      tile.addEventListener("click", event => {
+        if (
+          event.target.closest(
+            "[data-vybe-video]"
+          )
+        ) {
+          return;
+        }
+
+        if (
+          event.target.closest(
+            "[data-vybe-photo]"
+          )
+        ) {
+          return;
+        }
+
+        const username =
+          tile.dataset.exploreUsername;
+
+        if (username) {
+          showPublicProfile(username);
+        }
+      });
+    });
+}
+
+/* --------------------------------
    SEARCH NAVIGATION
 -------------------------------- */
 
@@ -4053,13 +4579,13 @@ function notificationText(notification) {
 function notificationIcon(type) {
   switch (type) {
     case "follow":
-      return "♡";
+      return vybeIcon("like");
     case "reaction":
-      return "♥";
+      return vybeIcon("like", true);
     case "comment":
-      return "💬";
+      return vybeIcon("comment");
     case "repost":
-      return "↻";
+      return vybeIcon("repost");
     default:
       return "•";
   }
@@ -4088,7 +4614,7 @@ function renderActivityNotifications() {
   if (!activityNotifications.length) {
     content.innerHTML = `
       <div class="activity-empty">
-        <div class="activity-empty-icon">♡</div>
+        <div class="activity-empty-icon">${vybeIcon("like")}</div>
         <h2>No activity yet</h2>
         <p>
           Your likes, follows, comments and reposts
@@ -4433,7 +4959,7 @@ if (state.authenticated) {
       }
 
       story.viewer_reaction = reaction;
-      likeButton.textContent = reaction || "♡";
+      likeButton.innerHTML = vybeIcon("like", Boolean(reaction));
     } catch (error) {
       console.error(error);
     }
@@ -4568,13 +5094,621 @@ document
   ?.addEventListener("click", openCreatePost);
 
 
+
+/* --------------------------------
+   VYBE MEDIA SYSTEM
+-------------------------------- */
+
+let vybeActiveVideo = null;
+let vybeVideoObserver = null;
+let vybePhotoViewer = null;
+
+function renderVYBEVideoPlayer(media, options = {}) {
+  const url = escapeHtml(media?.url || "");
+  if (!url) return "";
+
+  const poster = media?.poster_url
+    ? ` poster="${escapeHtml(media.poster_url)}"`
+    : "";
+
+  const compact = options.compact ? " vybe-video-compact" : "";
+
+  return `
+    <div
+      class="vybe-video-player${compact}"
+      data-vybe-video
+      data-video-url="${url}"
+    >
+      <video
+        class="vybe-video-element"
+        src="${url}"
+        ${poster}
+        muted
+        playsinline
+        preload="metadata"
+        aria-label="VYBE video"
+      ></video>
+
+      <button
+        type="button"
+        class="vybe-video-play"
+        data-vybe-video-play
+        aria-label="Play video"
+      >
+        ▶
+      </button>
+
+      <div class="vybe-video-top-controls">
+        <button
+          type="button"
+          class="vybe-video-control"
+          data-vybe-video-mute
+          aria-label="Unmute video"
+        >🔇</button>
+      </div>
+
+      <div class="vybe-video-bottom-controls">
+        <span class="vybe-video-time" data-vybe-video-time>0:00</span>
+
+        <input
+          class="vybe-video-progress"
+          data-vybe-video-progress
+          type="range"
+          min="0"
+          max="100"
+          value="0"
+          step="0.1"
+          aria-label="Video progress"
+        />
+
+        <button
+          type="button"
+          class="vybe-video-control"
+          data-vybe-video-fullscreen
+          aria-label="Fullscreen"
+        >⛶</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderVYBEPostMedia(mediaItems, options = {}) {
+  if (!Array.isArray(mediaItems) || !mediaItems.length) {
+    return "";
+  }
+
+  const items = mediaItems.slice(0, 4);
+
+  const layout =
+    items.length === 1 ? "single" :
+    items.length === 2 ? "two" :
+    items.length === 3 ? "three" :
+    "four";
+
+  return `
+    <div class="post-media ${layout}" data-vybe-media-group>
+      ${items.map((media, index) => {
+        const url = escapeHtml(media?.url || "");
+
+        if (!url) return "";
+
+        if (media.media_type === "video") {
+          return `
+            <div
+              class="post-media-item vybe-home-video"
+              data-vybe-open-video="${escapeHtml(options.postId || "")}"
+            >
+              ${renderVYBEVideoPlayer(media)}
+            </div>
+          `;
+        }
+
+        if (media.media_type === "image") {
+          return `
+            <button
+              type="button"
+              class="vybe-photo-trigger post-media-item"
+              data-vybe-photo
+              data-photo-index="${index}"
+              data-photo-url="${url}"
+              data-photo-alt="Post image"
+            >
+              <img
+                src="${url}"
+                alt="Post image"
+                loading="lazy"
+                decoding="async"
+                onerror="this.closest('.post-media-item').classList.add('media-load-error')"
+              />
+            </button>
+          `;
+        }
+
+        return "";
+      }).join("")}
+    </div>
+  `;
+}
+
+function initVYBEVideoPlayers(root = document) {
+  const players = root.querySelectorAll
+    ? root.querySelectorAll("[data-vybe-video]")
+    : [];
+
+  if (!players.length) return;
+
+  if (!vybeVideoObserver) {
+    vybeVideoObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const player = entry.target;
+        const video = player.querySelector(".vybe-video-element");
+
+        if (!video) return;
+
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+          if (vybeActiveVideo && vybeActiveVideo !== video) {
+            vybeActiveVideo.pause();
+          }
+
+          vybeActiveVideo = video;
+
+          video.play().catch(() => {});
+
+          player.classList.add("is-playing");
+        } else {
+          if (!video.paused) {
+            video.pause();
+          }
+
+          player.classList.remove("is-playing");
+        }
+      });
+    }, {
+      threshold: [0, 0.6, 1]
+    });
+  }
+
+  players.forEach(player => {
+    if (player.dataset.vybeVideoReady === "true") return;
+
+    player.dataset.vybeVideoReady = "true";
+
+    const video =
+      player.querySelector(".vybe-video-element");
+
+    if (!video) return;
+
+    vybeVideoObserver.observe(player);
+
+    video.addEventListener("play", () => {
+      if (
+        vybeActiveVideo &&
+        vybeActiveVideo !== video
+      ) {
+        vybeActiveVideo.pause();
+      }
+
+      vybeActiveVideo = video;
+      player.classList.add("is-playing");
+    });
+
+    video.addEventListener("pause", () => {
+      player.classList.remove("is-playing");
+    });
+
+    video.addEventListener("timeupdate", () => {
+      updateVYBEVideoUI(player);
+    });
+
+    video.addEventListener("loadedmetadata", () => {
+      updateVYBEVideoUI(player);
+    });
+
+    video.addEventListener("ended", () => {
+      player.classList.remove("is-playing");
+      updateVYBEVideoUI(player);
+    });
+  });
+}
+
+function updateVYBEVideoUI(player) {
+  const video =
+    player.querySelector(".vybe-video-element");
+
+  const progress =
+    player.querySelector("[data-vybe-video-progress]");
+
+  const time =
+    player.querySelector("[data-vybe-video-time]");
+
+  if (!video) return;
+
+  if (
+    progress &&
+    Number.isFinite(video.duration) &&
+    video.duration > 0
+  ) {
+    progress.value =
+      (video.currentTime / video.duration) * 100;
+  }
+
+  if (time) {
+    const current =
+      Math.floor(video.currentTime || 0);
+
+    const minutes =
+      Math.floor(current / 60);
+
+    const seconds =
+      String(current % 60).padStart(2, "0");
+
+    time.textContent =
+      `${minutes}:${seconds}`;
+  }
+}
+
+function toggleVYBEVideo(video) {
+  if (!video) return;
+
+  if (video.paused) {
+    if (
+      vybeActiveVideo &&
+      vybeActiveVideo !== video
+    ) {
+      vybeActiveVideo.pause();
+    }
+
+    video.play().catch(() => {});
+  } else {
+    video.pause();
+  }
+}
+
+function openVYBEPhotoViewer(items, startIndex = 0) {
+  const photos = (Array.isArray(items) ? items : [])
+    .filter(item => item?.url);
+
+  if (!photos.length) return;
+
+  let index = Math.max(
+    0,
+    Math.min(startIndex, photos.length - 1)
+  );
+
+  if (!vybePhotoViewer) {
+    vybePhotoViewer =
+      document.createElement("div");
+
+    vybePhotoViewer.className =
+      "vybe-photo-viewer hidden";
+
+    vybePhotoViewer.innerHTML = `
+      <div class="vybe-photo-viewer-backdrop"></div>
+
+      <button
+        type="button"
+        class="vybe-photo-close"
+        data-vybe-photo-close
+        aria-label="Close photo"
+      >×</button>
+
+      <button
+        type="button"
+        class="vybe-photo-nav vybe-photo-prev"
+        data-vybe-photo-prev
+        aria-label="Previous photo"
+      >‹</button>
+
+      <div
+        class="vybe-photo-stage"
+        data-vybe-photo-stage
+      ></div>
+
+      <button
+        type="button"
+        class="vybe-photo-nav vybe-photo-next"
+        data-vybe-photo-next
+        aria-label="Next photo"
+      >›</button>
+
+      <div
+        class="vybe-photo-counter"
+        data-vybe-photo-counter
+      ></div>
+    `;
+
+    document.body.appendChild(vybePhotoViewer);
+
+    vybePhotoViewer
+      .querySelector("[data-vybe-photo-close]")
+      ?.addEventListener("click", closeVYBEPhotoViewer);
+
+    vybePhotoViewer
+      .querySelector(".vybe-photo-viewer-backdrop")
+      ?.addEventListener("click", closeVYBEPhotoViewer);
+
+    vybePhotoViewer
+      .querySelector("[data-vybe-photo-prev]")
+      ?.addEventListener("click", () => {
+        index =
+          (index - 1 + photos.length) %
+          photos.length;
+
+        renderVYBEPhotoViewer();
+      });
+
+    vybePhotoViewer
+      .querySelector("[data-vybe-photo-next]")
+      ?.addEventListener("click", () => {
+        index =
+          (index + 1) %
+          photos.length;
+
+        renderVYBEPhotoViewer();
+      });
+  }
+
+  function renderVYBEPhotoViewer() {
+    const stage =
+      vybePhotoViewer.querySelector(
+        "[data-vybe-photo-stage]"
+      );
+
+    const counter =
+      vybePhotoViewer.querySelector(
+        "[data-vybe-photo-counter]"
+      );
+
+    const item = photos[index];
+
+    stage.innerHTML = `
+      <img
+        class="vybe-photo-viewer-image"
+        src="${escapeHtml(item.url)}"
+        alt="${escapeHtml(item.alt || "VYBE photo")}"
+        draggable="false"
+      />
+    `;
+
+    if (counter) {
+      counter.textContent =
+        `${index + 1} / ${photos.length}`;
+    }
+
+    vybePhotoViewer
+      .querySelector("[data-vybe-photo-prev]")
+      ?.classList.toggle(
+        "hidden",
+        photos.length <= 1
+      );
+
+    vybePhotoViewer
+      .querySelector("[data-vybe-photo-next]")
+      ?.classList.toggle(
+        "hidden",
+        photos.length <= 1
+      );
+
+    const image =
+      stage.querySelector("img");
+
+    if (image) {
+      let scale = 1;
+      let startDistance = 0;
+
+      image.addEventListener("wheel", event => {
+        event.preventDefault();
+
+        scale += event.deltaY < 0
+          ? 0.15
+          : -0.15;
+
+        scale =
+          Math.max(1, Math.min(4, scale));
+
+        image.style.transform =
+          `scale(${scale})`;
+      }, { passive: false });
+
+      let touchStartX = 0;
+
+      image.addEventListener("touchstart", event => {
+        if (event.touches.length === 1) {
+          touchStartX =
+            event.touches[0].clientX;
+        }
+
+        if (event.touches.length === 2) {
+          startDistance =
+            Math.hypot(
+              event.touches[0].clientX -
+                event.touches[1].clientX,
+              event.touches[0].clientY -
+                event.touches[1].clientY
+            );
+        }
+      }, { passive: true });
+
+      image.addEventListener("touchend", event => {
+        if (
+          event.changedTouches.length === 1 &&
+          startDistance === 0
+        ) {
+          const delta =
+            event.changedTouches[0].clientX -
+            touchStartX;
+
+          if (Math.abs(delta) > 60) {
+            index =
+              delta < 0
+                ? (index + 1) % photos.length
+                : (index - 1 + photos.length) %
+                  photos.length;
+
+            renderVYBEPhotoViewer();
+          }
+        }
+
+        startDistance = 0;
+      }, { passive: true });
+    }
+  }
+
+  renderVYBEPhotoViewer();
+
+  vybePhotoViewer.classList.remove("hidden");
+  document.body.classList.add("vybe-media-viewer-open");
+}
+
+function closeVYBEPhotoViewer() {
+  if (!vybePhotoViewer) return;
+
+  vybePhotoViewer.classList.add("hidden");
+  document.body.classList.remove("vybe-media-viewer-open");
+}
+
+document.addEventListener("click", event => {
+  const play =
+    event.target.closest("[data-vybe-video-play]");
+
+  if (play) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const player =
+      play.closest("[data-vybe-video]");
+
+    toggleVYBEVideo(
+      player?.querySelector(".vybe-video-element")
+    );
+
+    return;
+  }
+
+  const mute =
+    event.target.closest("[data-vybe-video-mute]");
+
+  if (mute) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const player =
+      mute.closest("[data-vybe-video]");
+
+    const video =
+      player?.querySelector(".vybe-video-element");
+
+    if (video) {
+      video.muted = !video.muted;
+      mute.textContent =
+        video.muted ? "🔇" : "🔊";
+    }
+
+    return;
+  }
+
+  const fullscreen =
+    event.target.closest(
+      "[data-vybe-video-fullscreen]"
+    );
+
+  if (fullscreen) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const player =
+      fullscreen.closest("[data-vybe-video]");
+
+    if (player?.requestFullscreen) {
+      player.requestFullscreen().catch(() => {});
+    }
+
+    return;
+  }
+
+  const photo =
+    event.target.closest("[data-vybe-photo]");
+
+  if (photo) {
+    event.preventDefault();
+
+    const group =
+      photo.closest("[data-vybe-media-group]");
+
+    const photoButtons =
+      group
+        ? Array.from(
+            group.querySelectorAll(
+              "[data-vybe-photo]"
+            )
+          )
+        : [photo];
+
+    const items = photoButtons.map(item => ({
+      url: item.dataset.photoUrl,
+      alt: item.dataset.photoAlt || "VYBE photo"
+    }));
+
+    const startIndex =
+      photoButtons.indexOf(photo);
+
+    openVYBEPhotoViewer(
+      items,
+      Math.max(0, startIndex)
+    );
+
+    return;
+  }
+});
+
+document.addEventListener("input", event => {
+  const progress =
+    event.target.closest(
+      "[data-vybe-video-progress]"
+    );
+
+  if (!progress) return;
+
+  const player =
+    progress.closest("[data-vybe-video]");
+
+  const video =
+    player?.querySelector(".vybe-video-element");
+
+  if (
+    video &&
+    Number.isFinite(video.duration) &&
+    video.duration > 0
+  ) {
+    video.currentTime =
+      (Number(progress.value) / 100) *
+      video.duration;
+  }
+});
+
+document.addEventListener("keydown", event => {
+  if (
+    event.key === "Escape" &&
+    vybePhotoViewer &&
+    !vybePhotoViewer.classList.contains("hidden")
+  ) {
+    closeVYBEPhotoViewer();
+  }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  initVYBEVideoPlayers();
+});
+
 /* --------------------------------
    VYBZ / DM NAVIGATION
 -------------------------------- */
 
-function showVybz() {
+function showVybz(postId = null) {
   hideDynamicScreens();
+
   show(bottomNav);
+
   document.querySelectorAll(".screen").forEach(screen => {
     screen.classList.add("hidden");
   });
@@ -4587,29 +5721,1426 @@ function showVybz() {
     screen.className = "screen vybz-screen";
 
     screen.innerHTML = `
-      <header class="simple-screen-topbar">
-        <strong>VYBZ</strong>
+      <header class="vybz-topbar">
+        <div class="vybz-tabs">
+          <button type="button" class="vybz-tab active">VYBZ ▾</button>
+          <button type="button" class="vybz-tab">Friends</button>
+          <button type="button" class="vybz-tab">Following</button>
+        </div>
       </header>
 
-      <main class="simple-screen-content">
-        <div class="screen-placeholder">
-          <div class="screen-placeholder-icon">▶</div>
-          <h2>VYBZ</h2>
-          <p>Short photos and videos are coming here.</p>
-        </div>
-      </main>
+      <main class="vybz-feed" id="vybzFeed"></main>
     `;
 
     document.body.appendChild(screen);
+
   }
 
   screen.classList.remove("hidden");
   setActiveNav("vybz");
+
+  const feed = screen.querySelector("#vybzFeed");
+
+  if (!feed) return;
+
+  const posts = Array.isArray(state.posts)
+    ? state.posts
+    : [];
+
+  const videoPosts = posts.filter(post =>
+    Array.isArray(post.media) &&
+    post.media.some(media =>
+      media?.media_type === "video" &&
+      media?.url
+    )
+  );
+
+  if (!videoPosts.length) {
+    feed.innerHTML = `
+      <div class="vybz-empty">
+        <div class="vybz-empty-icon">${vybeIcon("vybz")}</div>
+        <h2>No VYBZ yet</h2>
+        <p>Video posts will appear here.</p>
+      </div>
+    `;
+    return;
+  }
+
+  feed.innerHTML = videoPosts.map(post => {
+    const media = post.media.find(item =>
+      item?.media_type === "video" &&
+      item?.url
+    );
+
+    const name =
+      post.display_name ||
+      post.username ||
+      "VYBER";
+
+    const isMine =
+      state.user &&
+      state.user.id === post.user_id;
+
+    const likes =
+      Number(post.reaction_count || 0);
+
+    const reposts =
+      Number(post.repost_count || 0);
+
+    const saves =
+      Number(post.save_count || 0);
+
+    const liked =
+      post.viewer_reaction === "like";
+
+    const reposted =
+      Boolean(post.viewer_reposted);
+
+    const saved =
+      Boolean(post.viewer_saved);
+
+    return `
+      <article
+        class="vybz-item"
+        data-post-id="${escapeHtml(post.id)}"
+        data-vybz-post="${escapeHtml(post.id)}"
+        data-viewer-reaction="${escapeHtml(post.viewer_reaction || "")}"
+        data-viewer-reposted="${reposted}"
+        data-repost-count="${reposts}"
+        data-viewer-saved="${saved}"
+        data-save-count="${saves}"
+      >
+
+        <div class="vybz-media">
+          ${renderVYBEVideoPlayer(media)}
+        </div>
+
+        <div class="vybz-overlay">
+
+          <div class="vybz-author">
+            <button
+              type="button"
+              class="vybz-avatar"
+              data-vybz-profile="${escapeHtml(post.username)}"
+            >
+              ${escapeHtml(name.charAt(0).toUpperCase())}
+            </button>
+
+            <button
+              type="button"
+              class="vybz-username"
+              data-vybz-profile="${escapeHtml(post.username)}"
+            >
+              @${escapeHtml(post.username)}
+            </button>
+
+            ${
+              !isMine
+                ? `
+                  <button
+                    type="button"
+                    class="vybz-follow"
+                    data-vybe-follow="${escapeHtml(post.username)}"
+                  >
+                    Follow
+                  </button>
+                `
+                : ""
+            }
+          </div>
+
+          <div class="vybz-caption">
+            ${escapeHtml(post.content || "")}
+            ${
+              post.content && post.content.length > 90
+                ? `<button type="button" class="vybz-see-more">See more</button>`
+                : ""
+            }
+          </div>
+
+        </div>
+
+        <div class="vybz-actions">
+
+          <button
+            type="button"
+            class="vybz-action ${liked ? "action-active" : ""}"
+            data-vybe-like="${escapeHtml(post.id)}"
+            aria-label="Like"
+            aria-pressed="${liked}"
+          >
+            <span>${vybeIcon("like", liked)}</span>
+            <small>${formatVYBECount(likes)}</small>
+          </button>
+
+          <button
+            type="button"
+            class="vybz-action"
+            data-vybe-comment="${escapeHtml(post.id)}"
+            aria-label="Comments"
+          >
+            ${vybeIcon("comment")}
+            <small>0</small>
+          </button>
+
+          <button
+            type="button"
+            class="vybz-action ${reposted ? "action-active" : ""}"
+            data-vybe-repost="${escapeHtml(post.id)}"
+            aria-label="Repost"
+            aria-pressed="${reposted}"
+          >
+            ${vybeIcon("repost", Boolean(post.viewer_reposted))}
+            <small>${formatVYBECount(reposts)}</small>
+          </button>
+
+          <button
+            type="button"
+            class="vybz-action"
+            data-vybe-share="${escapeHtml(post.id)}"
+            aria-label="Share"
+          >
+            ${vybeIcon("share")}
+            <small>Share</small>
+          </button>
+
+          <button
+            type="button"
+            class="vybz-action ${saved ? "action-active" : ""}"
+            data-vybe-save="${escapeHtml(post.id)}"
+            aria-label="Save"
+            aria-pressed="${saved}"
+          >
+            <span>${vybeIcon("save", saved)}</span>
+            <small>${formatVYBECount(saves)}</small>
+          </button>
+
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  initVYBEVideoPlayers(feed);
+
+  feed.querySelectorAll(".vybe-video-element").forEach(video => {
+    video.muted = false;
+    video.volume = 1;
+  });
+
+  /* VYBZ videos must always have sound. */
+  feed.querySelectorAll(".vybe-video-element").forEach(video => {
+    video.muted = false;
+    video.volume = 1;
+
+    video.addEventListener("loadedmetadata", () => {
+      video.muted = false;
+      video.volume = 1;
+    });
+
+    video.play().catch(() => {});
+  });
+
+  /* Remove mute controls from VYBZ. */
+  feed
+    .querySelectorAll("[data-vybe-video-mute]")
+    .forEach(button => {
+      button.remove();
+    });
+
+  setupVYBEPostActions(feed);
+
+  feed.querySelectorAll("[data-vybe-like]").forEach(button => {
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleVYBZLike(button.dataset.vybeLike);
+    });
+  });
+
+  feed.querySelectorAll("[data-vybe-save]").forEach(button => {
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleVYBZSave(button.dataset.vybeSave);
+    });
+  });
+
+  feed.querySelectorAll("[data-vybe-comment]").forEach(button => {
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const postId = button.dataset.vybeComment;
+
+      openComments(postId);
+      loadVYBZCommentCount(
+        postId,
+        button.closest(".vybz-item")
+      );
+    });
+  });
+
+  feed.querySelectorAll(".vybz-item").forEach(item => {
+    const postId = item.dataset.postId;
+
+    if (postId) {
+      loadVYBZCommentCount(postId, item);
+    }
+  });
+
+  feed.querySelectorAll("[data-vybe-share]").forEach(button => {
+    button.addEventListener("click", async event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const postId = button.dataset.vybeShare;
+
+      try {
+        const url =
+          `${location.origin}${location.pathname}?post=${encodeURIComponent(postId)}`;
+
+        if (navigator.share) {
+          await navigator.share({
+            title: "VYBE",
+            text: "Check this VYBZ on VYBE",
+            url
+          });
+        } else if (navigator.clipboard) {
+          await navigator.clipboard.writeText(url);
+          button.querySelector("small").textContent = "Copied";
+          setTimeout(() => {
+            if (button.querySelector("small")) {
+              button.querySelector("small").textContent = "Share";
+            }
+          }, 1200);
+        }
+      } catch (error) {
+        if (error?.name !== "AbortError") {
+          console.error("VYBZ share error:", error);
+        }
+      }
+    });
+  });
+
+  feed.querySelectorAll("[data-vybe-repost]").forEach(button => {
+    if (button.dataset.vybeReady === "true") return;
+
+    button.dataset.vybeReady = "true";
+
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      toggleVYBZRepost(button.dataset.vybeRepost);
+    });
+  });
+
+  feed.querySelectorAll("[data-vybz-profile]").forEach(button => {
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const username = button.dataset.vybzProfile;
+
+      if (username) {
+        showPublicProfile(username);
+      }
+    });
+  });
+
+  feed.querySelectorAll(".vybz-see-more").forEach(button => {
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      button
+        .closest(".vybz-caption")
+        ?.classList.toggle("expanded");
+    });
+  });
+
+  /* Keep the selected VYBZ item in view. */
+  const targetIndex = postId
+    ? videoPosts.findIndex(
+        post => String(post.id) === String(postId)
+      )
+    : 0;
+
+  if (targetIndex >= 0) {
+    const target = feed.children[targetIndex];
+
+    target?.scrollIntoView({
+      behavior: "instant",
+      block: "start"
+    });
+
+    const video =
+      target?.querySelector(".vybe-video-element");
+
+    if (video) {
+      video.muted = false;
+      video.volume = 1;
+      video.play().catch(() => {});
+    }
+  }
+}
+
+
+function vybeIcon(name, active = false) {
+  const paths = {
+    like: `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="vybe-icon-main" d="M20.8 8.7c0 5.1-8.8 10-8.8 10s-8.8-4.9-8.8-10A5.2 5.2 0 0 1 12 5.9a5.2 5.2 0 0 1 8.8 2.8Z"/></svg>`,
+    comment: `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="vybe-icon-main" d="M4 5.5h16v10.8H9l-5 3v-13.8Z"/><path class="vybe-icon-detail" d="M8 10h8M8 13h5"/></svg>`,
+    repost: `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="vybe-icon-main" d="M7 7h10l-2.7-2.7"/><path class="vybe-icon-main" d="M17 17H7l2.7 2.7"/><path class="vybe-icon-main" d="M17 7a5 5 0 0 1 3 4.5"/><path class="vybe-icon-main" d="M7 17a5 5 0 0 1-3-4.5"/></svg>`,
+    share: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle class="vybe-icon-node" cx="18" cy="5.5" r="2.3"/><circle class="vybe-icon-node" cx="6" cy="12" r="2.3"/><circle class="vybe-icon-node" cx="18" cy="18.5" r="2.3"/><path class="vybe-icon-main" d="m8 11 7.7-4.2M8 13l7.7 4.2"/></svg>`,
+    save: `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="vybe-icon-main" d="M6 4.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 18 4.5V21l-6-3.6L6 21z"/></svg>`,
+    follow: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle class="vybe-icon-main" cx="9" cy="8" r="3"/><path class="vybe-icon-main" d="M3.8 19c.6-3 2.3-4.6 5.2-4.6s4.6 1.6 5.2 4.6"/><path class="vybe-icon-main" d="M18 11v6M15 14h6"/></svg>`,
+    home: `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="vybe-icon-main" d="M3.5 10.8 12 3.7l8.5 7.1v8.7a1 1 0 0 1-1 1h-5.1v-5.7H9.6v5.7H4.5a1 1 0 0 1-1-1z"/></svg>`,
+    vybz: `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="vybe-icon-main" d="M7 4.8 19 12 7 19.2z"/><path class="vybe-icon-detail" d="M4.5 7.2v9.6"/></svg>`,
+    dm: `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="vybe-icon-main" d="M4 5.5h16v11H9l-5 3z"/><path class="vybe-icon-detail" d="m8 10 4 3 4-3"/></svg>`,
+    explore: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle class="vybe-icon-main" cx="11" cy="11" r="6.7"/><path class="vybe-icon-main" d="m16 16 4.5 4.5"/><path class="vybe-icon-detail" d="m13.8 8.2-1.2 3-3 1.2 3 1.2 1.2 3 1.2-3 3-1.2-3-1.2z"/></svg>`,
+    profile: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle class="vybe-icon-main" cx="12" cy="8" r="3.4"/><path class="vybe-icon-main" d="M5.2 20c.8-3.5 3.2-5.3 6.8-5.3s6 1.8 6.8 5.3"/></svg>`
+  };
+
+  const icon = paths[name] || "";
+  return `<span class="vybe-svg-icon${active ? " is-active" : ""}">${icon}</span>`;
+}
+
+function formatVYBECount(value) {
+  const n = Number(value) || 0;
+
+  if (n >= 1000000) {
+    return `${(n / 1000000).toFixed(n >= 10000000 ? 0 : 1)}M`;
+  }
+
+  if (n >= 1000) {
+    return `${(n / 1000).toFixed(n >= 100000 ? 0 : 1)}K`;
+  }
+
+  return String(n);
+}
+
+async function toggleVYBZLike(postId) {
+  if (!state.authenticated || !state.user) {
+    alert("Please log in to like posts.");
+    return;
+  }
+
+  const item = document.querySelector(
+    `.vybz-item[data-post-id="${CSS.escape(postId)}"]`
+  );
+
+  if (!item) return;
+
+  const button = item.querySelector(
+    `[data-vybe-like="${CSS.escape(postId)}"]`
+  );
+
+  if (button) button.disabled = true;
+
+  try {
+    const current =
+      item.dataset.viewerReaction || "";
+
+    const data =
+      current === "like"
+        ? await api(
+            `/api/posts/${encodeURIComponent(postId)}/reaction`,
+            { method: "DELETE" }
+          )
+        : await api(
+            `/api/posts/${encodeURIComponent(postId)}/reaction`,
+            {
+              method: "PUT",
+              body: JSON.stringify({ reaction: "like" })
+            }
+          );
+
+    if (!data.success) {
+      throw new Error(
+        data.error || "Could not update like."
+      );
+    }
+
+    const liked =
+      current !== "like";
+
+    item.dataset.viewerReaction =
+      liked ? "like" : "";
+
+    const count =
+      Number(
+        data.reaction_counts?.like || 0
+      );
+
+    if (button) {
+      button.classList.toggle(
+        "action-active",
+        liked
+      );
+
+      button.setAttribute(
+        "aria-pressed",
+        liked ? "true" : "false"
+      );
+
+      button.innerHTML = `
+        <span>${vybeIcon("like", liked)}</span>
+        <small>${formatVYBECount(count)}</small>
+      `;
+    }
+
+  } catch (error) {
+    console.error("VYBZ like error:", error);
+    alert(
+      error.message ||
+      "Could not update like."
+    );
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function toggleVYBZSave(postId) {
+  if (!state.authenticated || !state.user) {
+    alert("Please log in to save posts.");
+    return;
+  }
+
+  const item = document.querySelector(
+    `.vybz-item[data-post-id="${CSS.escape(postId)}"]`
+  );
+
+  if (!item) return;
+
+  const button = item.querySelector(
+    `[data-vybe-save="${CSS.escape(postId)}"]`
+  );
+
+  const saved =
+    item.dataset.viewerSaved === "true";
+
+  if (button) button.disabled = true;
+
+  try {
+    const data = await api(
+      `/api/posts/${encodeURIComponent(postId)}/save`,
+      {
+        method: saved ? "DELETE" : "PUT"
+      }
+    );
+
+    if (!data.success) {
+      throw new Error(
+        data.error || "Could not update save."
+      );
+    }
+
+    const isSaved = Boolean(data.saved);
+    const count = Number(data.save_count) || 0;
+
+    item.dataset.viewerSaved =
+      isSaved ? "true" : "false";
+
+    if (button) {
+      button.classList.toggle(
+        "action-active",
+        isSaved
+      );
+
+      button.setAttribute(
+        "aria-pressed",
+        isSaved ? "true" : "false"
+      );
+
+      button.innerHTML = `
+        ${vybeIcon("save", Boolean(post.viewer_saved))}
+        <small>${formatVYBECount(count)}</small>
+      `;
+    }
+
+  } catch (error) {
+    console.error("VYBZ save error:", error);
+    alert(
+      error.message ||
+      "Could not update save."
+    );
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function loadVYBZCommentCount(postId, item) {
+  try {
+    const data = await api(
+      `/api/posts/${encodeURIComponent(postId)}/comments`
+    );
+
+    if (!data.success) return;
+
+    const count =
+      (data.comments || []).length;
+
+    const button = item.querySelector(
+      `[data-vybe-comment="${CSS.escape(postId)}"]`
+    );
+
+    const countElement =
+      button?.querySelector("small");
+
+    if (countElement) {
+      countElement.textContent =
+        formatVYBECount(count);
+    }
+  } catch (error) {
+    console.error(
+      "VYBZ comment count error:",
+      error
+    );
+  }
+}
+
+async function toggleVYBZRepost(postId) {
+  if (!state.authenticated || !state.user) {
+    alert("Please log in to repost posts.");
+    return;
+  }
+
+  const item = document.querySelector(
+    `.vybz-item[data-post-id="${CSS.escape(postId)}"]`
+  );
+
+  if (!item) return;
+
+  const button = item.querySelector(
+    `[data-vybe-repost="${CSS.escape(postId)}"]`
+  );
+
+  const alreadyReposted =
+    item.dataset.viewerReposted === "true";
+
+  if (button) button.disabled = true;
+
+  try {
+    const data = await api(
+      `/api/posts/${encodeURIComponent(postId)}/repost`,
+      {
+        method: alreadyReposted ? "DELETE" : "PUT"
+      }
+    );
+
+    if (!data.success) {
+      throw new Error(
+        data.error || "Could not update repost."
+      );
+    }
+
+    const reposted = Boolean(data.reposted);
+    const count = Number(data.repost_count) || 0;
+
+    item.dataset.viewerReposted =
+      reposted ? "true" : "false";
+
+    item.dataset.repostCount = String(count);
+
+    if (button) {
+      button.classList.toggle(
+        "action-active",
+        reposted
+      );
+
+      button.setAttribute(
+        "aria-pressed",
+        reposted ? "true" : "false"
+      );
+
+      button.innerHTML = `
+        ${vybeIcon("repost", Boolean(post.viewer_reposted))}
+        <small>${formatVYBECount(count)}</small>
+      `;
+    }
+  } catch (error) {
+    console.error("VYBZ repost error:", error);
+
+    alert(
+      error.message ||
+      "Could not update repost."
+    );
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+let activeDMConversation = null;
+let dmConversations = [];
+let dmSocket = null;
+
+function initDMSocket() {
+  if (dmSocket || typeof window.io !== "function") return;
+  if (!state.user?.id) return;
+
+  dmSocket = window.io({
+    withCredentials: true
+  });
+
+  dmSocket.on("connect", () => {
+    console.log("[VYBE DM] realtime connected");
+
+    if (activeDMConversation) {
+      dmSocket.emit(
+        "join_conversation",
+        activeDMConversation
+      );
+    }
+  });
+
+  dmSocket.on("connect_error", error => {
+    console.error(
+      "[VYBE DM] realtime connection error:",
+      error?.message || error
+    );
+  });
+
+  dmSocket.on("dm:message", message => {
+    if (!message?.id || !message?.conversation_id) {
+      return;
+    }
+
+    const screen =
+      document.getElementById("dmScreen");
+
+    if (
+      screen &&
+      !screen.classList.contains("hidden") &&
+      String(activeDMConversation) ===
+        String(message.conversation_id)
+    ) {
+      appendDMMessage(screen, message);
+    }
+  });
+}
+
+function appendDMMessage(screen, message) {
+  const container =
+    screen?.querySelector("#dmMessages");
+
+  if (!container || !message?.id) return;
+
+  const messageId = String(message.id);
+
+  if (
+    container.querySelector(
+      `[data-dm-message-id="${CSS.escape(messageId)}"]`
+    )
+  ) {
+    return;
+  }
+
+  const empty =
+    container.querySelector(".dm-chat-empty");
+
+  if (empty) empty.remove();
+
+  const mine =
+    String(message.sender_id) ===
+    String(state.user?.id);
+
+  const row =
+    document.createElement("div");
+
+  row.className =
+    `dm-message-row ${mine ? "is-mine" : "is-theirs"}`;
+
+  row.dataset.dmMessageId = messageId;
+
+  row.innerHTML = `
+    <div class="dm-message-bubble">
+      <div class="dm-message-content">
+        ${escapeHtml(message.content || "")}
+      </div>
+      <time>${escapeHtml(
+        formatDMTime(message.created_at)
+      )}</time>
+    </div>
+  `;
+
+  container.appendChild(row);
+  container.scrollTop = container.scrollHeight;
+}
+
+
+function dmInitial(name) {
+  return String(name || "V")
+    .trim()
+    .charAt(0)
+    .toUpperCase() || "V";
+}
+
+function dmAvatar(user, className = "dm-avatar") {
+  const name = user?.display_name || user?.username || "VYBE";
+
+  if (user?.avatar_url) {
+    return `
+      <span class="${className}">
+        <img
+          src="${escapeHtml(user.avatar_url)}"
+          alt="${escapeHtml(name)}"
+        >
+      </span>
+    `;
+  }
+
+  return `
+    <span class="${className}">
+      ${escapeHtml(dmInitial(name))}
+    </span>
+  `;
+}
+
+function formatDMTime(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+
+  if (diff < 60 * 1000) return "now";
+  if (diff < 60 * 60 * 1000) {
+    return `${Math.floor(diff / (60 * 1000))}m`;
+  }
+
+  if (diff < 24 * 60 * 60 * 1000) {
+    return `${Math.floor(diff / (60 * 60 * 1000))}h`;
+  }
+
+  if (diff < 7 * 24 * 60 * 60 * 1000) {
+    return `${Math.floor(diff / (24 * 60 * 60 * 1000))}d`;
+  }
+
+  return date.toLocaleDateString([], {
+    month: "short",
+    day: "numeric"
+  });
+}
+
+function renderDMHome(screen) {
+  const conversations = dmConversations || [];
+
+  screen.innerHTML = `
+    <header class="dm-topbar">
+      <div class="dm-topbar-title">
+        <span class="dm-topbar-icon">
+          ${vybeIcon("dm")}
+        </span>
+        <div>
+          <strong>Messages</strong>
+          <span>Private conversations</span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="dm-new-button"
+        id="dmNewMessageButton"
+        aria-label="New message"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v14"/>
+          <path d="M5 12h14"/>
+        </svg>
+      </button>
+    </header>
+
+    <main class="dm-home-content">
+      <div class="dm-search-wrap">
+        <span class="dm-search-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.8" cy="10.8" r="6.8"/>
+            <path d="m16 16 4.5 4.5"/>
+          </svg>
+        </span>
+
+        <input
+          id="dmSearchInput"
+          class="dm-search-input"
+          type="search"
+          placeholder="Search messages"
+          autocomplete="off"
+        >
+      </div>
+
+      <div class="dm-section-heading">
+        <span>Conversations</span>
+        <button
+          type="button"
+          id="dmRefreshButton"
+          class="dm-refresh-button"
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div id="dmConversationList" class="dm-conversation-list">
+        ${
+          conversations.length
+            ? conversations.map(renderDMConversation).join("")
+            : `
+              <div class="dm-empty-state">
+                <div class="dm-empty-icon">
+                  ${vybeIcon("dm")}
+                </div>
+                <h2>No messages yet</h2>
+                <p>Start a private conversation with someone on VYBE.</p>
+                <button
+                  type="button"
+                  class="dm-start-button"
+                  id="dmStartConversation"
+                >
+                  Start a conversation
+                </button>
+              </div>
+            `
+        }
+      </div>
+    </main>
+  `;
+
+  bindDMHomeEvents(screen);
+}
+
+function renderDMConversation(conversation) {
+  const name =
+    conversation.display_name ||
+    conversation.username ||
+    "VYBE";
+
+  const unread = Number(conversation.unread_count || 0);
+
+  return `
+    <button
+      type="button"
+      class="dm-conversation"
+      data-dm-conversation="${escapeHtml(conversation.id)}"
+    >
+      ${dmAvatar(conversation)}
+
+      <span class="dm-conversation-body">
+        <span class="dm-conversation-head">
+          <strong>${escapeHtml(name)}</strong>
+          <time>${escapeHtml(
+            formatDMTime(
+              conversation.last_message_at ||
+              conversation.updated_at
+            )
+          )}</time>
+        </span>
+
+        <span class="dm-conversation-foot">
+          <span class="dm-last-message">
+            ${
+              conversation.last_message
+                ? escapeHtml(conversation.last_message)
+                : "Start a conversation"
+            }
+          </span>
+
+          ${
+            unread > 0
+              ? `<span class="dm-unread">${formatVYBECount(unread)}</span>`
+              : ""
+          }
+        </span>
+      </span>
+    </button>
+  `;
+}
+
+async function loadDMConversations(screen) {
+  const list = screen.querySelector("#dmConversationList");
+
+  if (list && !dmConversations.length) {
+    list.innerHTML = `
+      <div class="dm-loading">
+        <span class="dm-loading-spinner"></span>
+        <span>Loading messages...</span>
+      </div>
+    `;
+  }
+
+  try {
+    const data = await api("/api/messages/conversations");
+
+    dmConversations = data.conversations || [];
+    renderDMHome(screen);
+  } catch (error) {
+    console.error("DM conversations error:", error);
+
+    if (list) {
+      list.innerHTML = `
+        <div class="dm-empty-state dm-error-state">
+          <div class="dm-empty-icon">
+            ${vybeIcon("dm")}
+          </div>
+          <h2>Couldn't load messages</h2>
+          <p>${escapeHtml(error.message || "Please try again.")}</p>
+          <button
+            type="button"
+            class="dm-start-button"
+            id="dmRetryButton"
+          >
+            Try again
+          </button>
+        </div>
+      `;
+
+      screen
+        .querySelector("#dmRetryButton")
+        ?.addEventListener("click", () => loadDMConversations(screen));
+    }
+  }
+}
+
+function bindDMHomeEvents(screen) {
+  screen
+    .querySelector("#dmNewMessageButton")
+    ?.addEventListener("click", () => openDMUserSearch(screen));
+
+  screen
+    .querySelector("#dmStartConversation")
+    ?.addEventListener("click", () => openDMUserSearch(screen));
+
+  screen
+    .querySelector("#dmRefreshButton")
+    ?.addEventListener("click", () => loadDMConversations(screen));
+
+  screen
+    .querySelectorAll("[data-dm-conversation]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        openDMChat(screen, button.dataset.dmConversation);
+      });
+    });
+
+  screen
+    .querySelector("#dmSearchInput")
+    ?.addEventListener("input", event => {
+      const term = event.target.value.trim().toLowerCase();
+
+      screen.querySelectorAll("[data-dm-conversation]").forEach(item => {
+        const conversation = dmConversations.find(
+          c => String(c.id) === String(item.dataset.dmConversation)
+        );
+
+        const text = [
+          conversation?.display_name,
+          conversation?.username,
+          conversation?.last_message
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        item.classList.toggle(
+          "hidden",
+          Boolean(term && !text.includes(term))
+        );
+      });
+    });
+}
+
+async function openDMUserSearch(screen) {
+  screen.innerHTML = `
+    <header class="dm-topbar dm-search-topbar">
+      <button
+        type="button"
+        class="dm-back-button"
+        id="dmSearchBack"
+        aria-label="Back"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m15 5-7 7 7 7"/>
+        </svg>
+      </button>
+
+      <div class="dm-topbar-title">
+        <div>
+          <strong>New message</strong>
+          <span>Find someone on VYBE</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="dm-search-content">
+      <div class="dm-search-wrap">
+        <span class="dm-search-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.8" cy="10.8" r="6.8"/>
+            <path d="m16 16 4.5 4.5"/>
+          </svg>
+        </span>
+
+        <input
+          id="dmUserSearchInput"
+          class="dm-search-input"
+          type="search"
+          placeholder="Search people..."
+          autocomplete="off"
+          autofocus
+        >
+      </div>
+
+      <div id="dmUserSearchResults" class="dm-user-results">
+        <div class="dm-search-hint">
+          Search by username or display name.
+        </div>
+      </div>
+    </main>
+  `;
+
+  screen.querySelector("#dmSearchBack")?.addEventListener("click", () => {
+    renderDMHome(screen);
+    loadDMConversations(screen);
+  });
+
+  const input = screen.querySelector("#dmUserSearchInput");
+  const results = screen.querySelector("#dmUserSearchResults");
+
+  let timer = null;
+
+  input?.addEventListener("input", () => {
+    clearTimeout(timer);
+
+    const term = input.value.trim();
+
+    if (term.length < 2) {
+      results.innerHTML = `
+        <div class="dm-search-hint">
+          Search by username or display name.
+        </div>
+      `;
+      return;
+    }
+
+    results.innerHTML = `
+      <div class="dm-loading">
+        <span class="dm-loading-spinner"></span>
+        <span>Searching...</span>
+      </div>
+    `;
+
+    timer = setTimeout(async () => {
+      try {
+        const data = await api(
+          `/api/search/users?q=${encodeURIComponent(term)}`
+        );
+
+        const users = (data.users || []).filter(
+          user => String(user.id) !== String(state.user?.id)
+        );
+
+        if (!users.length) {
+          results.innerHTML = `
+            <div class="dm-search-hint">
+              No people found for "${escapeHtml(term)}".
+            </div>
+          `;
+          return;
+        }
+
+        results.innerHTML = users.map(user => `
+          <button
+            type="button"
+            class="dm-user-result"
+            data-dm-user-id="${escapeHtml(user.id)}"
+          >
+            ${dmAvatar(user)}
+
+            <span class="dm-user-result-info">
+              <strong>
+                ${escapeHtml(
+                  user.display_name ||
+                  user.username ||
+                  "VYBE"
+                )}
+                ${user.is_verified ? " ✓" : ""}
+              </strong>
+              <span>@${escapeHtml(user.username || "")}</span>
+            </span>
+
+            <svg class="dm-user-result-arrow" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m9 5 7 7-7 7"/>
+            </svg>
+          </button>
+        `).join("");
+
+        results
+          .querySelectorAll("[data-dm-user-id]")
+          .forEach(button => {
+            button.addEventListener("click", () => {
+              startDMConversation(
+                screen,
+                button.dataset.dmUserId
+              );
+            });
+          });
+      } catch (error) {
+        console.error("DM user search error:", error);
+
+        results.innerHTML = `
+          <div class="dm-search-hint">
+            ${escapeHtml(error.message || "Search failed.")}
+          </div>
+        `;
+      }
+    }, 300);
+  });
+
+  requestAnimationFrame(() => input?.focus());
+}
+
+async function startDMConversation(screen, userId) {
+  try {
+    const data = await api("/api/messages/conversations", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId })
+    });
+
+    if (!data.success || !data.conversation?.id) {
+      throw new Error(data.error || "Could not start conversation.");
+    }
+
+    await openDMChat(screen, data.conversation.id);
+  } catch (error) {
+    console.error("Start DM error:", error);
+    alert(error.message || "Could not start conversation.");
+  }
+}
+
+async function openDMChat(screen, conversationId) {
+  screen.classList.add("dm-chat-mode");
+
+  screen.innerHTML = `
+    <header class="dm-chat-topbar">
+      <button
+        type="button"
+        class="dm-back-button"
+        id="dmChatBack"
+        aria-label="Back to messages"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m15 5-7 7 7 7"/>
+        </svg>
+      </button>
+
+      <div id="dmChatUser" class="dm-chat-user">
+        <span class="dm-chat-avatar">V</span>
+        <span>
+          <strong>Loading...</strong>
+          <small>Conversation</small>
+        </span>
+      </div>
+    </header>
+
+    <main id="dmMessages" class="dm-messages">
+      <div class="dm-loading">
+        <span class="dm-loading-spinner"></span>
+        <span>Loading conversation...</span>
+      </div>
+    </main>
+
+    <form id="dmComposer" class="dm-composer">
+      <textarea
+        id="dmMessageInput"
+        rows="1"
+        maxlength="5000"
+        placeholder="Write a message..."
+        autocomplete="off"
+      ></textarea>
+
+      <button
+        type="submit"
+        class="dm-send-button"
+        aria-label="Send message"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 11.7 19.5 4.5 15 20 11.2 13.2 4 11.7Z"/>
+          <path d="m11.2 13.2 8.3-8.1"/>
+        </svg>
+      </button>
+    </form>
+  `;
+
+  if (activeDMConversation && dmSocket) {
+    dmSocket.emit(
+      "leave_conversation",
+      activeDMConversation
+    );
+  }
+
+  activeDMConversation = String(conversationId);
+
+  if (dmSocket?.connected) {
+    dmSocket.emit(
+      "join_conversation",
+      activeDMConversation
+    );
+  }
+
+  screen.querySelector("#dmChatBack")?.addEventListener("click", () => {
+    renderDMHome(screen);
+    loadDMConversations(screen);
+  });
+
+  const composer = screen.querySelector("#dmComposer");
+  const input = screen.querySelector("#dmMessageInput");
+
+  composer?.addEventListener("submit", event => {
+    event.preventDefault();
+    sendDMMessage(screen, conversationId);
+  });
+
+  input?.addEventListener("input", () => {
+    input.style.height = "auto";
+    input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+  });
+
+  await loadDMChat(screen, conversationId);
+}
+
+async function loadDMChat(screen, conversationId) {
+  try {
+    const data = await api(
+      `/api/messages/conversations/${encodeURIComponent(conversationId)}`
+    );
+
+    if (!data.success) {
+      throw new Error(data.error || "Could not load conversation.");
+    }
+
+    const user = data.conversation || {};
+    const messages = data.messages || [];
+
+    const name =
+      user.display_name ||
+      user.username ||
+      "VYBE";
+
+    const chatUser = screen.querySelector("#dmChatUser");
+
+    if (chatUser) {
+      chatUser.innerHTML = `
+        ${dmAvatar(user, "dm-chat-avatar")}
+        <span>
+          <strong>${escapeHtml(name)}</strong>
+          <small>@${escapeHtml(user.username || "")}</small>
+        </span>
+      `;
+    }
+
+    renderDMMessages(screen, messages);
+
+    await api(
+      `/api/messages/conversations/${encodeURIComponent(conversationId)}/read`,
+      { method: "PUT" }
+    );
+
+  } catch (error) {
+    console.error("DM chat error:", error);
+
+    const messages = screen.querySelector("#dmMessages");
+
+    if (messages) {
+      messages.innerHTML = `
+        <div class="dm-empty-state dm-error-state">
+          <div class="dm-empty-icon">${vybeIcon("dm")}</div>
+          <h2>Couldn't load chat</h2>
+          <p>${escapeHtml(error.message || "Please try again.")}</p>
+        </div>
+      `;
+    }
+  }
+}
+
+function renderDMMessages(screen, messages) {
+  const container = screen.querySelector("#dmMessages");
+  if (!container) return;
+
+  if (!messages.length) {
+    container.innerHTML = `
+      <div class="dm-chat-empty">
+        <div class="dm-chat-empty-icon">${vybeIcon("dm")}</div>
+        <strong>Start the conversation</strong>
+        <span>Send the first message.</span>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = messages.map(message => {
+    const mine =
+      String(message.sender_id) === String(state.user?.id);
+
+    return `
+      <div class="dm-message-row ${mine ? "is-mine" : "is-theirs"}">
+        <div class="dm-message-bubble">
+          <div class="dm-message-content">
+            ${escapeHtml(message.content)}
+          </div>
+          <time>${escapeHtml(
+            formatDMTime(message.created_at)
+          )}</time>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  requestAnimationFrame(() => {
+    container.scrollTop = container.scrollHeight;
+  });
+}
+
+async function sendDMMessage(screen, conversationId) {
+  const input = screen.querySelector("#dmMessageInput");
+  const button = screen.querySelector(".dm-send-button");
+
+  if (!input) return;
+
+  const content = input.value.trim();
+
+  if (!content) return;
+
+  if (button) button.disabled = true;
+
+  try {
+    const data = await api(
+      `/api/messages/conversations/${encodeURIComponent(conversationId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ content })
+      }
+    );
+
+    if (!data.success || !data.message) {
+      throw new Error(data.error || "Could not send message.");
+    }
+
+    input.value = "";
+    input.style.height = "auto";
+
+    appendDMMessage(screen, data.message);
+  } catch (error) {
+    console.error("Send DM error:", error);
+    alert(error.message || "Could not send message.");
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 function showDM() {
   hideDynamicScreens();
   show(bottomNav);
+
   document.querySelectorAll(".screen").forEach(screen => {
     screen.classList.add("hidden");
   });
@@ -4620,26 +7151,16 @@ function showDM() {
     screen = document.createElement("section");
     screen.id = "dmScreen";
     screen.className = "screen dm-screen";
-
-    screen.innerHTML = `
-      <header class="simple-screen-topbar">
-        <strong>Messages</strong>
-      </header>
-
-      <main class="simple-screen-content">
-        <div class="screen-placeholder">
-          <div class="screen-placeholder-icon">✈</div>
-          <h2>Direct Messages</h2>
-          <p>Your conversations will appear here.</p>
-        </div>
-      </main>
-    `;
-
     document.body.appendChild(screen);
   }
 
   screen.classList.remove("hidden");
   setActiveNav("dm");
+
+  initDMSocket();
+
+  renderDMHome(screen);
+  loadDMConversations(screen);
 }
 
 function setActiveNav(navName) {
@@ -4659,3 +7180,25 @@ document
   .querySelector('[data-nav="dm"]')
   ?.addEventListener("click", showDM);
 
+/* VYBE comments composer */
+(() => {
+  const trigger =
+    document.getElementById("openCommentComposer");
+
+  const form =
+    document.getElementById("commentForm");
+
+  const input =
+    document.getElementById("commentContent");
+
+  if (!trigger || !form || !input) return;
+
+  trigger.addEventListener("click", () => {
+    trigger.classList.add("hidden");
+    form.classList.remove("hidden");
+
+    requestAnimationFrame(() => {
+      input.focus();
+    });
+  });
+})();

@@ -39,9 +39,6 @@ CREATE TABLE IF NOT EXISTS posts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT post_content_length
-        CHECK (char_length(btrim(content)) >= 1),
-
     CONSTRAINT post_content_max_length
         CHECK (char_length(content) <= 2000)
 );
@@ -397,4 +394,71 @@ CREATE TABLE IF NOT EXISTS story_reactions (
 
 CREATE INDEX IF NOT EXISTS idx_story_reactions_story_id
 ON story_reactions(story_id);
+
+
+
+-- ========================================
+-- VYBE DIRECT MESSAGES
+-- ========================================
+
+CREATE TABLE IF NOT EXISTS conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS conversation_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    conversation_id UUID NOT NULL
+        REFERENCES conversations(id)
+        ON DELETE CASCADE,
+
+    user_id UUID NOT NULL
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_read_at TIMESTAMPTZ,
+
+    CONSTRAINT unique_conversation_member
+        UNIQUE (conversation_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_members_user
+    ON conversation_members (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_members_conversation
+    ON conversation_members (conversation_id);
+
+
+CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    conversation_id UUID NOT NULL
+        REFERENCES conversations(id)
+        ON DELETE CASCADE,
+
+    sender_id UUID NOT NULL
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    content TEXT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT message_content_not_empty
+        CHECK (char_length(btrim(content)) >= 1),
+
+    CONSTRAINT message_content_max_length
+        CHECK (char_length(content) <= 5000)
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_created
+    ON messages (conversation_id, created_at ASC);
+
+CREATE INDEX IF NOT EXISTS idx_messages_sender_created
+    ON messages (sender_id, created_at DESC);
 

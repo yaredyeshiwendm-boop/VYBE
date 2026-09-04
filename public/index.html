@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#050505">
+<link rel="manifest" href="/manifest.webmanifest">
   <title>VYBE</title>
   <link rel="stylesheet" href="/css/style.css?v=2">
 </head>
@@ -183,7 +184,7 @@
           class="top-notification-button"
           type="button"
           aria-label="Notifications"
-        >♡</button>
+        ><span class="vybe-svg-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="vybe-icon-main" d="M20.8 8.7c0 5.1-8.8 10-8.8 10S3.2 13.8 3.2 8.7A5.2 5.2 0 0 1 12 5.9a5.2 5.2 0 0 1 8.8 2.8Z"/></svg></span></button>
 
       </header>
 
@@ -219,28 +220,53 @@
 
       <nav class="bottom-nav">
 
-        <button class="nav-item active" data-nav="home" type="button">
-          <span>⌂</span>
+        <button class="nav-item active" data-nav="home" type="button" aria-label="Home">
+          <span class="nav-icon vybe-nav-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3.5 10.8 12 3.7l8.5 7.1v8.7a1 1 0 0 1-1 1h-5.1v-5.7H9.6v5.7H4.5a1 1 0 0 1-1-1z"/>
+            </svg>
+          </span>
           <small>Home</small>
         </button>
 
-        <button class="nav-item" data-nav="vybz" type="button">
-          <span>▶</span>
+        <button class="nav-item" data-nav="vybz" type="button" aria-label="VYBZ">
+          <span class="nav-icon vybe-nav-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 4.8 19 12 7 19.2z"/>
+              <path d="M4.5 7.2v9.6"/>
+            </svg>
+          </span>
           <small>VYBZ</small>
         </button>
 
-        <button class="nav-item" data-nav="dm" type="button">
-          <span>✈</span>
+        <button class="nav-item" data-nav="dm" type="button" aria-label="Messages">
+          <span class="nav-icon vybe-nav-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 5.5h16v11H9l-5 3z"/>
+              <path d="m8 10 4 3 4-3"/>
+            </svg>
+          </span>
           <small>DM</small>
         </button>
 
-        <button class="nav-item" data-nav="explore" type="button">
-          <span>⌕</span>
+        <button class="nav-item" data-nav="explore" type="button" aria-label="Explore">
+          <span class="nav-icon vybe-nav-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.7"/>
+              <path d="m16 16 4.5 4.5"/>
+              <path d="m13.8 8.2-1.2 3-3 1.2 3 1.2 1.2 3 1.2-3 3-1.2-3-1.2z"/>
+            </svg>
+          </span>
           <small>Explore</small>
         </button>
 
-        <button class="nav-item" data-nav="profile" type="button">
-          <span>◯</span>
+        <button class="nav-item" data-nav="profile" type="button" aria-label="Profile">
+          <span class="nav-icon vybe-nav-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.4"/>
+              <path d="M5.2 20c.8-3.5 3.2-5.3 6.8-5.3s6 1.8 6.8 5.3"/>
+            </svg>
+          </span>
           <small>Profile</small>
         </button>
 
@@ -498,71 +524,133 @@
   </div>
 </div>
 
-<div id="createPostModal" class="modal hidden">
+<div id="createPostModal" class="modal hidden create-post-modal">
 
-      <div class="modal-backdrop"></div>
+  <div class="create-post-backdrop" data-close-create-post></div>
 
-      <div class="modal-card">
+  <section
+    class="create-post-sheet"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="createPostTitle"
+  >
 
-        <div class="modal-header">
-          <h2>Create Post</h2>
-          <button id="closeCreatePost" type="button">×</button>
+    <header class="create-post-header">
+      <div class="create-post-heading">
+        <div class="create-post-brand-mark">V</div>
+        <div>
+          <h2 id="createPostTitle">Create</h2>
+          <span>Share your VYBE</span>
         </div>
+      </div>
 
-        <form id="createPostForm">
+      <button
+        id="closeCreatePost"
+        class="create-post-close"
+        type="button"
+        aria-label="Close create post"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"/>
+        </svg>
+      </button>
+    </header>
 
-          <textarea
-            id="postContent"
-            maxlength="2000"
-            rows="7"
-            placeholder="What's your VYBE?"
-            required
-          ></textarea>
+    <form id="createPostForm" class="create-post-form">
 
-          <div class="post-character-count">
-            <span id="postCharacterCount">0</span>/2000
-          </div>
+      <div class="create-post-author">
+        <div class="create-post-avatar">V</div>
 
-          <div class="post-media-picker">
-            <label
-              class="media-picker-button"
-              for="postMediaInput"
-            >
-              <span>＋</span>
-              <span>Photo / Video</span>
-            </label>
+        <div class="create-post-author-info">
+          <strong>VYBE</strong>
+          <span>Public</span>
+        </div>
+      </div>
 
-            <input
-              id="postMediaInput"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
-              multiple
-              hidden
-            />
+      <div class="create-post-composer">
+        <textarea
+          id="postContent"
+          maxlength="2000"
+          rows="5"
+          placeholder="What's happening?"
+          aria-label="Post content"
+        ></textarea>
 
-            <div
-              id="postMediaPreview"
-              class="post-media-preview hidden"
-            ></div>
-          </div>
+        <div class="create-post-counter">
+          <span id="postCharacterCount">0</span>
+          <span>/2000</span>
+        </div>
+      </div>
 
-          <div id="createPostError"
-               class="form-error hidden"></div>
+      <div
+        id="postMediaPreview"
+        class="post-media-preview create-post-media-preview hidden"
+      ></div>
 
-          <button
-            id="publishPostButton"
-            class="primary-button"
-            type="submit"
-          >
-            <span class="button-text">Post</span>
-            <span class="button-loader hidden">Posting...</span>
-          </button>
+      <div class="create-post-toolbar">
 
-        </form>
+        <label
+          class="create-post-tool"
+          for="postMediaInput"
+          title="Add photo or video"
+        >
+          <span class="create-post-tool-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="3"/>
+              <circle cx="8.5" cy="9" r="1.5"/>
+              <path d="m5 17 4.5-4.5 3.2 3.2 2.3-2.3L19 17"/>
+            </svg>
+          </span>
+          <span>Media</span>
+        </label>
+
+        <input
+          id="postMediaInput"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+          multiple
+          hidden
+        />
+
+        <div class="create-post-toolbar-hint">
+          <span class="create-post-limit">Up to 4</span>
+        </div>
 
       </div>
 
-    </div>
+      <div
+        id="createPostError"
+        class="form-error hidden create-post-error"
+      ></div>
+
+      <footer class="create-post-footer">
+
+        <div class="create-post-footer-status">
+          <span class="create-post-status-dot"></span>
+          <span>Anyone can see this post</span>
+        </div>
+
+        <button
+          id="publishPostButton"
+          class="create-post-publish"
+          type="submit"
+        >
+          <span class="button-text">Post</span>
+          <span class="button-loader hidden">Posting...</span>
+
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 12h15"/>
+            <path d="m13 6 6 6-6 6"/>
+          </svg>
+        </button>
+
+      </footer>
+
+    </form>
+
+  </section>
+
+</div>
 
 
   <div
@@ -600,24 +688,43 @@
         </div>
       </div>
 
-      <form id="commentForm" class="comment-form">
-        <textarea
-          id="commentContent"
-          maxlength="1000"
-          rows="2"
-          placeholder="Write a comment…"
-          aria-label="Write a comment"
-          required
-        ></textarea>
+      <div id="commentComposer" class="comment-composer">
+  <button
+    id="openCommentComposer"
+    class="comment-composer-trigger"
+    type="button"
+  >
+    <span class="comment-composer-avatar">V</span>
 
-        <button
-          id="submitComment"
-          class="primary-button"
-          type="submit"
-        >
-          Post
-        </button>
-      </form>
+    <span class="comment-composer-placeholder">
+      Add a comment…
+    </span>
+
+    <span class="comment-composer-arrow">↑</span>
+  </button>
+
+  <form id="commentForm" class="comment-form comment-form-expanded hidden">
+    <div class="comment-input-shell">
+      <textarea
+        id="commentContent"
+        maxlength="1000"
+        rows="2"
+        placeholder="Write a comment…"
+        aria-label="Write a comment"
+        required
+      ></textarea>
+
+      <button
+        id="submitComment"
+        class="comment-send-button"
+        type="submit"
+        aria-label="Post comment"
+      >
+        ↑
+      </button>
+    </div>
+  </form>
+</div>
 
       <p
         id="commentError"
@@ -627,6 +734,18 @@
     </section>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js")
+      .catch(error => {
+        console.error("VYBE service worker error:", error);
+      });
+  });
+}
+</script>
   <script src="/js/app.js?v=3"></script>
 
 </body>
