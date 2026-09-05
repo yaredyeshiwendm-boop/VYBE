@@ -4031,7 +4031,8 @@ body.comments-open {
   height: 100%;
   overflow-y: auto;
   overscroll-behavior-y: contain;
-  scroll-snap-type: y mandatory;
+  scroll-snap-type: none;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 
@@ -4044,8 +4045,8 @@ body.comments-open {
   width: 100%;
   height: 100%;
   min-height: 100%;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
+  scroll-snap-align: none;
+  scroll-snap-stop: normal;
   overflow: hidden;
   background: #000;
 }
@@ -4338,6 +4339,149 @@ body.comments-open {
   }
 }
 
+
+
+/* =========================================================
+   VYBZ — MOBILE SCROLL & ACTION POLISH
+   Natural scrolling + compact controls
+   ========================================================= */
+
+.vybz-feed {
+  scroll-snap-type: none !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+.vybz-item {
+  scroll-snap-align: none !important;
+  scroll-snap-stop: normal !important;
+}
+
+.vybz-actions {
+  right: 10px;
+  bottom: 86px;
+  gap: 10px;
+}
+
+.vybz-action {
+  width: 44px;
+  height: 44px;
+}
+
+.vybz-action span {
+  font-size: 26px;
+}
+
+@media (max-width: 600px) {
+  .vybz-actions {
+    right: 7px;
+    bottom: 88px;
+    gap: 8px;
+  }
+
+  .vybz-action {
+    width: 42px;
+    height: 42px;
+  }
+
+  .vybz-action span {
+    font-size: 25px;
+  }
+}
+
+
+/* =========================================================
+   VYBZ — FAST SWIPE / REELS STYLE
+   ========================================================= */
+
+.vybz-feed {
+  overflow-y: auto;
+  scroll-snap-type: y mandatory !important;
+  scroll-snap-stop: normal;
+  scroll-behavior: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+.vybz-item {
+  scroll-snap-align: start !important;
+  scroll-snap-stop: normal !important;
+}
+
+/* Icon-only actions */
+.vybz-actions {
+  right: 7px;
+  bottom: 88px;
+  gap: 4px;
+}
+
+.vybz-action {
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  margin: 0;
+  border: 0 !important;
+  outline: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: none;
+  display: grid;
+  place-items: center;
+}
+
+.vybz-action span {
+  width: auto;
+  height: auto;
+  display: grid;
+  place-items: center;
+  font-size: 22px !important;
+  line-height: 1;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-shadow: 0 1px 5px rgba(0,0,0,.75);
+}
+
+.vybz-action small {
+  font-size: 9px;
+  margin-top: 1px;
+  text-shadow: 0 1px 5px rgba(0,0,0,.85);
+}
+
+@media (max-width: 600px) {
+  .vybz-actions {
+    right: 5px;
+    bottom: 88px;
+    gap: 3px;
+  }
+
+  .vybz-action {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .vybz-action span {
+    font-size: 21px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .vybz-actions {
+    right: 4px;
+    bottom: 86px;
+    gap: 2px;
+  }
+
+  .vybz-action {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .vybz-action span {
+    font-size: 20px !important;
+  }
+}
 
 /* =========================================================
    VYBE — PROFESSIONAL DESIGN SYSTEM
@@ -9032,3 +9176,2313 @@ body > #dmScreen.dm-screen.dm-chat-mode .dm-send-button {
   }
 }
 
+
+/* =========================================================
+   HOME — FAST / NATURAL MOBILE SCROLL
+   ========================================================= */
+
+#homeScreen {
+  min-height: 100vh;
+  height: auto;
+  overflow: visible;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
+}
+
+#homeScreen .home-content {
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+#homeScreen #postsFeed {
+  overflow: visible;
+  touch-action: pan-y;
+  scroll-behavior: auto;
+}
+
+@media (max-width: 600px) {
+  #homeScreen {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #homeScreen .post-card {
+    touch-action: pan-y;
+  }
+}
+
+
+/* =========================================================
+   STORY COMPOSER — TELEGRAM STYLE CAMERA / EDITOR
+   ========================================================= */
+
+.story-composer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  width: 100%;
+  height: 100dvh;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+}
+
+.story-camera-screen,
+.story-editor-screen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.story-camera-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+.story-camera-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 30px;
+  text-align: center;
+  background: #080808;
+}
+
+.story-camera-fallback-icon {
+  font-size: 52px;
+  margin-bottom: 8px;
+}
+
+.story-camera-fallback span {
+  max-width: 280px;
+  color: rgba(255,255,255,.65);
+  font-size: 13px;
+}
+
+.story-camera-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding:
+    calc(env(safe-area-inset-top) + 12px)
+    16px
+    12px;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0,0,0,.58),
+      transparent
+    );
+}
+
+.story-camera-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+.story-camera-close,
+.story-camera-top-button {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.38);
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.story-camera-top-button {
+  font-size: 18px;
+}
+
+.story-camera-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  padding:
+    16px
+    18px
+    calc(env(safe-area-inset-bottom) + 18px);
+  background:
+    linear-gradient(
+      to top,
+      rgba(0,0,0,.72),
+      rgba(0,0,0,.25),
+      transparent
+    );
+}
+
+.story-camera-controls {
+  width: min(100%, 390px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 96px 1fr;
+  align-items: center;
+  justify-items: center;
+}
+
+.story-camera-side-button {
+  min-width: 62px;
+  min-height: 58px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.story-camera-side-button span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(0,0,0,.38);
+  font-size: 25px;
+  line-height: 1;
+}
+
+.story-gallery-icon {
+  font-size: 22px !important;
+}
+
+.story-camera-side-button small {
+  font-size: 9px;
+  opacity: .82;
+}
+
+.story-capture-button {
+  width: 78px;
+  height: 78px;
+  padding: 5px;
+  border: 3px solid rgba(255,255,255,.95);
+  border-radius: 50%;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform .15s ease,
+    border-color .15s ease;
+}
+
+.story-capture-button span {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: #fff;
+  display: block;
+  transition:
+    width .16s ease,
+    height .16s ease,
+    border-radius .16s ease;
+}
+
+.story-capture-button:active {
+  transform: scale(.93);
+}
+
+.story-capture-button.recording {
+  border-color: #ff3b5c;
+}
+
+.story-capture-button.recording span {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #ff3b5c;
+}
+
+.story-mode-switch {
+  width: max-content;
+  margin: 12px auto 0;
+  padding: 4px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0,0,0,.48);
+  backdrop-filter: blur(12px);
+}
+
+.story-mode-switch button {
+  min-width: 72px;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255,255,255,.62);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  cursor: pointer;
+}
+
+.story-mode-switch button.active {
+  color: #fff;
+  background: rgba(255,255,255,.16);
+}
+
+/* -------------------------
+   STORY EDITOR
+   ------------------------- */
+
+.story-editor-screen {
+  display: flex;
+  flex-direction: column;
+  background: #000;
+}
+
+.story-editor-preview-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.story-editor-preview {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.story-editor-media {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  transform-origin: center;
+  transition:
+    transform .2s ease,
+    filter .2s ease;
+}
+
+.story-editor-preview video.story-editor-media {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.story-editor-crop-mode {
+  outline: 2px dashed rgba(255,255,255,.8);
+  outline-offset: -12px;
+  transform: scale(1.08);
+}
+
+.story-editor-back,
+.story-editor-top-button {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  z-index: 5;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.45);
+  color: #fff;
+  font-size: 29px;
+  cursor: pointer;
+}
+
+.story-editor-back {
+  left: 14px;
+}
+
+.story-editor-top-actions {
+  position: absolute;
+  top: 0;
+  right: 14px;
+}
+
+.story-editor-top-button {
+  position: static;
+  font-size: 21px;
+}
+
+.story-editor-tools {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 9px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: rgba(10,10,10,.96);
+}
+
+.story-editor-tools::-webkit-scrollbar {
+  display: none;
+}
+
+.story-editor-tools button {
+  flex: 0 0 auto;
+  min-width: 54px;
+  height: 52px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(255,255,255,.82);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.story-editor-tools button:active {
+  background: rgba(255,255,255,.1);
+}
+
+.story-editor-tools button span {
+  font-size: 21px;
+  line-height: 1;
+}
+
+.story-editor-tools button small {
+  font-size: 9px;
+  opacity: .7;
+}
+
+.story-video-trim {
+  padding: 10px 16px;
+  background: #101010;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.story-trim-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+  font-size: 11px;
+}
+
+.story-trim-header span {
+  opacity: .62;
+}
+
+.story-video-trim input {
+  width: 100%;
+  margin: 2px 0;
+  accent-color: #fff;
+}
+
+.story-editor-caption-wrap {
+  flex: 0 0 auto;
+  padding:
+    8px
+    12px
+    calc(env(safe-area-inset-bottom) + 12px);
+  background: #0b0b0b;
+}
+
+.story-editor-caption-wrap textarea {
+  min-height: 44px;
+  max-height: 100px;
+  margin-bottom: 8px;
+  resize: none;
+  border-radius: 13px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+}
+
+.story-publish-button {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 14px;
+  background: #fff;
+  color: #000;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.story-publish-button:disabled {
+  opacity: .6;
+}
+
+@media (max-width: 600px) {
+  .story-camera-controls {
+    grid-template-columns: 1fr 88px 1fr;
+  }
+
+  .story-capture-button {
+    width: 74px;
+    height: 74px;
+  }
+
+  .story-capture-button span {
+    width: 58px;
+    height: 58px;
+  }
+
+  .story-editor-tools {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 380px) {
+  .story-camera-bottom {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .story-camera-controls {
+    grid-template-columns: 1fr 78px 1fr;
+  }
+
+  .story-capture-button {
+    width: 68px;
+    height: 68px;
+  }
+
+  .story-capture-button span {
+    width: 52px;
+    height: 52px;
+  }
+
+  .story-camera-side-button span {
+    width: 34px;
+    height: 34px;
+    font-size: 22px;
+  }
+
+  .story-mode-switch {
+    margin-top: 8px;
+  }
+}
+
+/* =========================================================
+   STORY COMPOSER V2
+   TELEGRAM-STYLE CAMERA + EDITOR
+   ========================================================= */
+
+#createStoryModal.story-composer {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+#createStoryModal.story-composer.hidden {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------
+   CAMERA
+   --------------------------------------------------------- */
+
+#createStoryModal .story-camera-screen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  background: #000;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+#createStoryModal .story-camera-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain !important;
+  object-position: center !important;
+  background: #000;
+  transform: none !important;
+  filter: none !important;
+}
+
+#createStoryModal .story-camera-preview::-webkit-media-controls {
+  display: none !important;
+}
+
+#createStoryModal .story-camera-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: #090909;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 30px;
+  text-align: center;
+}
+
+#createStoryModal .story-camera-fallback.hidden {
+  display: none !important;
+}
+
+#createStoryModal .story-camera-fallback-icon {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,.10);
+  font-size: 34px;
+}
+
+/* ---------------------------------------------------------
+   CAMERA TOP BAR
+   --------------------------------------------------------- */
+
+#createStoryModal .story-camera-top {
+  position: absolute;
+  z-index: 10;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 72px;
+  padding:
+    max(12px, env(safe-area-inset-top))
+    16px
+    12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0,0,0,.62),
+      rgba(0,0,0,0)
+    );
+}
+
+#createStoryModal .story-camera-top > * {
+  pointer-events: auto;
+}
+
+#createStoryModal .story-camera-close,
+#createStoryModal .story-camera-top-button {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.36);
+  color: #fff;
+  font-size: 26px;
+  padding: 0;
+  box-shadow:
+    0 3px 12px rgba(0,0,0,.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+#createStoryModal .story-camera-top-button {
+  font-size: 19px;
+}
+
+#createStoryModal .story-camera-title {
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  text-shadow: 0 2px 8px rgba(0,0,0,.55);
+}
+
+/* ---------------------------------------------------------
+   CAMERA BOTTOM
+   --------------------------------------------------------- */
+
+#createStoryModal .story-camera-bottom {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding:
+    18px
+    18px
+    max(20px, env(safe-area-inset-bottom));
+  background:
+    linear-gradient(
+      to top,
+      rgba(0,0,0,.86),
+      rgba(0,0,0,.42) 46%,
+      rgba(0,0,0,0)
+    );
+}
+
+#createStoryModal .story-camera-controls {
+  width: 100%;
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: 1fr 96px 1fr;
+  align-items: center;
+  justify-items: center;
+}
+
+#createStoryModal .story-camera-side-button {
+  width: 64px;
+  min-height: 62px;
+  padding: 5px 3px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  text-shadow: 0 2px 8px rgba(0,0,0,.7);
+}
+
+#createStoryModal .story-camera-side-button small {
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 600;
+  opacity: .9;
+}
+
+#createStoryModal .story-gallery-icon,
+#createStoryModal .story-switch-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.28);
+  box-shadow:
+    0 4px 14px rgba(0,0,0,.25);
+}
+
+#createStoryModal .story-gallery-icon svg,
+#createStoryModal .story-switch-icon svg {
+  width: 23px;
+  height: 23px;
+  stroke: #fff;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#createStoryModal .story-capture-button {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  padding: 5px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.98);
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.42),
+    0 8px 24px rgba(0,0,0,.42);
+  display: grid;
+  place-items: center;
+  transition:
+    transform .16s ease,
+    box-shadow .16s ease;
+}
+
+#createStoryModal .story-capture-button:active {
+  transform: scale(.92);
+}
+
+#createStoryModal .story-capture-button > span {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: #fff;
+  display: block;
+  transition:
+    border-radius .18s ease,
+    width .18s ease,
+    height .18s ease,
+    background .18s ease;
+}
+
+#createStoryModal .story-capture-button.video-mode > span {
+  width: 62px;
+  height: 62px;
+  border: 5px solid #ff375f;
+  background: transparent;
+}
+
+#createStoryModal .story-capture-button.recording {
+  box-shadow:
+    0 0 0 3px rgba(255,55,95,.45),
+    0 8px 26px rgba(0,0,0,.5);
+}
+
+#createStoryModal .story-capture-button.recording > span {
+  width: 31px;
+  height: 31px;
+  border-radius: 8px;
+  background: #ff375f;
+  border: 0;
+}
+
+/* ---------------------------------------------------------
+   PHOTO / VIDEO SWITCH
+   --------------------------------------------------------- */
+
+#createStoryModal .story-mode-switch {
+  width: max-content;
+  min-width: 150px;
+  margin: 5px auto 0;
+  padding: 4px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: rgba(20,20,20,.72);
+  border: 1px solid rgba(255,255,255,.13);
+  box-shadow:
+    0 5px 20px rgba(0,0,0,.28);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+#createStoryModal .story-mode-switch button {
+  min-width: 68px;
+  height: 29px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255,255,255,.58);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .7px;
+}
+
+#createStoryModal .story-mode-switch button.active {
+  color: #fff;
+  background: rgba(255,255,255,.18);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.12);
+}
+
+/* ---------------------------------------------------------
+   EDITOR
+   --------------------------------------------------------- */
+
+#createStoryModal .story-editor-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  background: #000;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#createStoryModal .story-editor-screen.hidden {
+  display: none !important;
+}
+
+#createStoryModal .story-editor-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#createStoryModal .story-editor-preview {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+}
+
+#createStoryModal .story-editor-media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain !important;
+  object-position: center;
+  background: #000;
+  transform-origin: center center;
+  transition:
+    transform .2s ease,
+    filter .2s ease;
+}
+
+#createStoryModal .story-editor-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#createStoryModal .story-editor-overlay.drawing-active {
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+#createStoryModal .story-editor-topbar {
+  position: absolute;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 64px;
+  padding:
+    max(10px, env(safe-area-inset-top))
+    12px
+    10px;
+  display: grid;
+  grid-template-columns: 48px 1fr 70px;
+  align-items: center;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0,0,0,.74),
+      rgba(0,0,0,0)
+    );
+}
+
+#createStoryModal .story-editor-icon-button {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,.35);
+  color: #fff;
+  font-size: 34px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+#createStoryModal .story-editor-top-title {
+  min-width: 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+#createStoryModal .story-editor-top-title span {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+#createStoryModal .story-editor-top-title small {
+  font-size: 9px;
+  color: rgba(255,255,255,.6);
+  font-weight: 600;
+}
+
+#createStoryModal .story-editor-done {
+  justify-self: end;
+  min-width: 62px;
+  height: 36px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 18px;
+  background: rgba(255,255,255,.14);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+#createStoryModal .story-editor-done.is-done {
+  background: rgba(255,255,255,.22);
+}
+
+/* ---------------------------------------------------------
+   EDITOR FLOATING TOOLS
+   --------------------------------------------------------- */
+
+#createStoryModal .story-editor-floating-button {
+  position: absolute;
+  z-index: 15;
+  right: 12px;
+  width: 43px;
+  height: 43px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,.44);
+  color: #fff;
+  font-size: 22px;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+#createStoryModal #storyEditorUndo {
+  top: 78px;
+}
+
+#createStoryModal #storyEditorTextButton {
+  top: 128px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+#createStoryModal .story-editor-floating-button:disabled {
+  opacity: .35;
+}
+
+/* ---------------------------------------------------------
+   TEXT / DRAW
+   --------------------------------------------------------- */
+
+#createStoryModal .story-editor-text-overlay {
+  position: absolute;
+  z-index: 8;
+  max-width: 86%;
+  padding: 7px 12px;
+  color: #fff;
+  font-size: clamp(20px, 6vw, 38px);
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  white-space: pre-wrap;
+  text-shadow:
+    0 2px 5px rgba(0,0,0,.8);
+  pointer-events: none;
+}
+
+#createStoryModal .story-editor-drawing-dot {
+  position: absolute;
+  z-index: 7;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 1px 4px rgba(0,0,0,.55);
+  pointer-events: none;
+}
+
+#createStoryModal .story-editor-draw-bar {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  min-height: 48px;
+  padding: 6px 8px;
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(20,20,20,.86);
+  box-shadow: 0 7px 24px rgba(0,0,0,.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+#createStoryModal .story-editor-draw-bar.hidden,
+#createStoryModal .story-editor-text-bar.hidden,
+#createStoryModal .story-filter-bar.hidden,
+#createStoryModal .story-editor-subpanel.hidden {
+  display: none !important;
+}
+
+#createStoryModal .story-editor-draw-bar button:not(#storyDrawClose) {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.35);
+}
+
+#createStoryModal .story-editor-draw-bar button[data-draw-color="#ffffff"] {
+  background: #fff;
+}
+
+#createStoryModal .story-editor-draw-bar button[data-draw-color="#ff3b5c"] {
+  background: #ff3b5c;
+}
+
+#createStoryModal .story-editor-draw-bar button[data-draw-color="#ffd60a"] {
+  background: #ffd60a;
+}
+
+#createStoryModal .story-editor-draw-bar button[data-draw-color="#30d158"] {
+  background: #30d158;
+}
+
+#createStoryModal .story-editor-draw-bar button[data-draw-color="#0a84ff"] {
+  background: #0a84ff;
+}
+
+#createStoryModal .story-editor-draw-bar button.active {
+  box-shadow:
+    0 0 0 2px #fff;
+}
+
+#createStoryModal #storyDrawClose {
+  width: 31px;
+  height: 31px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.16);
+  color: #fff;
+  font-size: 17px;
+}
+
+/* ---------------------------------------------------------
+   TEXT BAR
+   --------------------------------------------------------- */
+
+#createStoryModal .story-editor-text-bar {
+  position: absolute;
+  z-index: 30;
+  left: 12px;
+  right: 12px;
+  bottom: 18px;
+  min-height: 48px;
+  padding: 5px 6px 5px 12px;
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(20,20,20,.9);
+  box-shadow: 0 7px 24px rgba(0,0,0,.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+#createStoryModal #storyTextInput {
+  min-width: 0;
+  flex: 1;
+  height: 38px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 15px;
+}
+
+#createStoryModal #storyTextInput::placeholder {
+  color: rgba(255,255,255,.48);
+}
+
+#createStoryModal #storyTextColor,
+#createStoryModal #storyTextDone {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.14);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+}
+
+/* ---------------------------------------------------------
+   EDITOR BOTTOM PANEL
+   --------------------------------------------------------- */
+
+#createStoryModal .story-editor-panel {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 40;
+  background: rgba(12,12,12,.98);
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding:
+    8px
+    10px
+    max(10px, env(safe-area-inset-bottom));
+  max-height: 40dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#createStoryModal .story-editor-tools {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+
+#createStoryModal .story-editor-tools button {
+  min-width: 0;
+  min-height: 56px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(255,255,255,.76);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+#createStoryModal .story-editor-tools button:active {
+  background: rgba(255,255,255,.1);
+}
+
+#createStoryModal .story-editor-tools button span {
+  font-size: 21px;
+  line-height: 1;
+}
+
+#createStoryModal .story-editor-tools button small {
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------
+   FILTERS
+   --------------------------------------------------------- */
+
+#createStoryModal .story-filter-bar {
+  display: flex;
+  gap: 9px;
+  overflow-x: auto;
+  padding: 8px 2px 5px;
+  scrollbar-width: none;
+}
+
+#createStoryModal .story-filter-bar::-webkit-scrollbar {
+  display: none;
+}
+
+#createStoryModal .story-filter-bar button {
+  flex: 0 0 auto;
+  width: 58px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255,255,255,.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+#createStoryModal .story-filter-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: block;
+  background:
+    linear-gradient(135deg,#666,#ddd 45%,#333);
+}
+
+#createStoryModal .filter-bright {
+  filter: brightness(1.3);
+}
+
+#createStoryModal .filter-vivid {
+  filter: saturate(1.8);
+}
+
+#createStoryModal .filter-mono {
+  filter: grayscale(1);
+}
+
+#createStoryModal .filter-warm {
+  filter: sepia(.55);
+}
+
+#createStoryModal .story-filter-bar button.active {
+  color: #fff;
+}
+
+#createStoryModal .story-filter-bar button.active .story-filter-preview {
+  box-shadow:
+    0 0 0 2px #fff;
+}
+
+/* ---------------------------------------------------------
+   CROP
+   --------------------------------------------------------- */
+
+#createStoryModal .story-editor-subpanel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 8px 2px;
+}
+
+#createStoryModal .story-editor-subpanel button {
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 17px;
+  background: rgba(255,255,255,.07);
+  color: rgba(255,255,255,.76);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+#createStoryModal .story-editor-subpanel button.active,
+#createStoryModal .story-editor-subpanel button.primary {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+}
+
+/* Visual crop framing */
+#createStoryModal .story-editor-media.story-editor-crop-916 {
+  width: 56.25%;
+  height: 100%;
+  object-fit: cover !important;
+}
+
+#createStoryModal .story-editor-media.story-editor-crop-square {
+  width: min(100%, 72dvh);
+  height: min(100%, 72dvh);
+  object-fit: cover !important;
+}
+
+#createStoryModal .story-editor-media.story-editor-crop-45 {
+  width: min(100%, 80dvh);
+  height: min(100%, 100dvh);
+  object-fit: cover !important;
+}
+
+/* ---------------------------------------------------------
+   VIDEO TRIM
+   --------------------------------------------------------- */
+
+#createStoryModal .story-video-trim {
+  padding: 7px 2px 5px;
+}
+
+#createStoryModal .story-video-trim.hidden {
+  display: none !important;
+}
+
+#createStoryModal .story-trim-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 7px;
+  color: rgba(255,255,255,.7);
+  font-size: 10px;
+}
+
+#createStoryModal .story-trim-header strong {
+  color: #fff;
+  font-size: 12px;
+}
+
+#createStoryModal .story-trim-track {
+  position: relative;
+  height: 30px;
+  border-radius: 15px;
+  background: rgba(255,255,255,.08);
+  overflow: hidden;
+}
+
+#createStoryModal .story-trim-track::before {
+  content: "";
+  position: absolute;
+  inset: 8px 10px;
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,.15) 0 3px,
+      transparent 3px 12px
+    );
+  pointer-events: none;
+}
+
+#createStoryModal .story-trim-track input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 30px;
+  margin: 0;
+  pointer-events: none;
+  appearance: none;
+  background: transparent;
+}
+
+#createStoryModal .story-trim-track input::-webkit-slider-thumb {
+  appearance: none;
+  width: 17px;
+  height: 30px;
+  border-radius: 5px;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,.3);
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------
+   CAPTION + POST
+   --------------------------------------------------------- */
+
+#createStoryModal .story-editor-caption-wrap {
+  padding-top: 7px;
+}
+
+#createStoryModal #storyCaption {
+  width: 100%;
+  min-height: 45px;
+  max-height: 90px;
+  resize: vertical;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 13px;
+  outline: 0;
+  background: rgba(255,255,255,.055);
+  color: #fff;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+#createStoryModal #storyCaption::placeholder {
+  color: rgba(255,255,255,.42);
+}
+
+#createStoryModal .story-publish-button {
+  width: 100%;
+  min-height: 45px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 13px;
+  background: #fff;
+  color: #000;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+#createStoryModal .story-publish-button:active {
+  transform: scale(.985);
+}
+
+/* ---------------------------------------------------------
+   MOBILE
+   --------------------------------------------------------- */
+
+@media (max-width: 600px) {
+  #createStoryModal .story-camera-controls {
+    grid-template-columns: 1fr 86px 1fr;
+  }
+
+  #createStoryModal .story-capture-button {
+    width: 72px;
+    height: 72px;
+  }
+
+  #createStoryModal .story-capture-button > span {
+    width: 61px;
+    height: 61px;
+  }
+
+  #createStoryModal .story-capture-button.video-mode > span {
+    width: 57px;
+    height: 57px;
+  }
+
+  #createStoryModal .story-editor-tools button {
+    min-height: 52px;
+  }
+}
+
+@media (max-width: 380px) {
+  #createStoryModal .story-camera-bottom {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  #createStoryModal .story-camera-controls {
+    grid-template-columns: 1fr 76px 1fr;
+  }
+
+  #createStoryModal .story-camera-side-button {
+    width: 58px;
+  }
+
+  #createStoryModal .story-mode-switch {
+    min-width: 140px;
+  }
+
+  #createStoryModal .story-mode-switch button {
+    min-width: 62px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
+
+/* =========================================================
+   STORY V3 — TELEGRAM STYLE CAMERA / EDITOR POLISH
+   ========================================================= */
+
+/* ---------- CAMERA: TRUE FULLSCREEN CONTAINER ---------- */
+
+#createStoryModal.story-composer,
+#createStoryModal.story-composer.show {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  max-height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: #000 !important;
+}
+
+#createStoryModal .story-camera-screen {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+}
+
+/* Keep the live camera inside the fullscreen viewport. */
+#createStoryModal .story-camera-preview {
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-position: center center !important;
+}
+
+
+/* ---------- EDITOR STAGE ---------- */
+
+#createStoryModal .story-editor-screen {
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  max-height: 100dvh !important;
+}
+
+#createStoryModal .story-editor-stage {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #000 !important;
+}
+
+/*
+ * The preview is the frame.
+ * Media can never escape it.
+ */
+#createStoryModal .story-editor-preview {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  background: #000 !important;
+}
+
+/* Natural centered media — no stretching. */
+#createStoryModal .story-editor-media {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: calc(100vw - 20px) !important;
+  max-height: calc(100% - 20px) !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  display: block !important;
+  margin: auto !important;
+  background: #050505 !important;
+}
+
+
+/* ---------- CROP PREVIEW ---------- */
+
+/*
+ * Crop buttons now change the preview immediately.
+ * These are visual crop frames, centered in the editor.
+ */
+
+#createStoryModal .story-editor-media.story-editor-crop-916 {
+  width: min(56.25dvh, calc(100vw - 20px)) !important;
+  height: min(100%, calc((100vw - 20px) * 1.7778)) !important;
+  max-width: calc(100vw - 20px) !important;
+  max-height: calc(100% - 20px) !important;
+  object-fit: cover !important;
+}
+
+#createStoryModal .story-editor-media.story-editor-crop-square {
+  width: min(calc(100vw - 20px), calc(100% - 20px), 72dvh) !important;
+  height: min(calc(100vw - 20px), calc(100% - 20px), 72dvh) !important;
+  max-width: calc(100vw - 20px) !important;
+  max-height: calc(100% - 20px) !important;
+  object-fit: cover !important;
+}
+
+#createStoryModal .story-editor-media.story-editor-crop-45 {
+  width: min(calc(100vw - 20px), 80dvh) !important;
+  height: min(calc(100vw - 20px), 100dvh) !important;
+  max-width: calc(100vw - 20px) !important;
+  max-height: calc(100% - 20px) !important;
+  object-fit: cover !important;
+}
+
+
+/* ---------- EDITOR TOPBAR ---------- */
+
+#createStoryModal .story-editor-topbar {
+  padding-top: max(10px, env(safe-area-inset-top)) !important;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0,0,0,.72),
+      rgba(0,0,0,.18) 65%,
+      transparent
+    ) !important;
+}
+
+
+/* ---------- BOTTOM EDITOR PANEL ---------- */
+
+#createStoryModal .story-editor-panel {
+  max-height: 42dvh !important;
+  padding-bottom:
+    max(10px, env(safe-area-inset-bottom)) !important;
+  background: rgba(10,10,10,.97) !important;
+}
+
+/* Make editor tools feel like a compact Telegram toolbar. */
+#createStoryModal .story-editor-tools {
+  grid-template-columns: repeat(6, minmax(48px, 1fr)) !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+}
+
+#createStoryModal .story-editor-tools::-webkit-scrollbar {
+  display: none !important;
+}
+
+#createStoryModal .story-editor-tools button {
+  min-height: 52px !important;
+  border-radius: 12px !important;
+}
+
+#createStoryModal .story-editor-tools button:active {
+  background: rgba(255,255,255,.14) !important;
+}
+
+
+/* ---------- MOBILE ---------- */
+
+@media (max-width: 600px) {
+
+  #createStoryModal .story-editor-media {
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100% - 16px) !important;
+  }
+
+  #createStoryModal .story-editor-media.story-editor-crop-916 {
+    width: min(56.25dvh, calc(100vw - 16px)) !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  #createStoryModal .story-editor-media.story-editor-crop-square {
+    width: min(calc(100vw - 16px), 72dvh) !important;
+    height: min(calc(100vw - 16px), 72dvh) !important;
+  }
+
+  #createStoryModal .story-editor-media.story-editor-crop-45 {
+    width: min(calc(100vw - 16px), 80dvh) !important;
+  }
+}
+
+
+/* ---------- OWN STORY ADD BUTTON ---------- */
+
+#createStoryModal ~ * .story-own-plus {
+  cursor: pointer;
+}
+
+.story-own-plus {
+  z-index: 5;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  background: #fff !important;
+  color: #111 !important;
+  border: 2px solid #111 !important;
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+}
+
+
+/* ---------- GALLERY ICON ---------- */
+
+#createStoryModal .story-gallery-icon {
+  background: rgba(255,255,255,.12) !important;
+  border: 1px solid rgba(255,255,255,.35) !important;
+  border-radius: 12px !important;
+}
+
+
+/* =========================================================
+   STORY V4 — CAMERA + TELEGRAM STYLE EDITOR
+   ========================================================= */
+
+/* ---------- CAMERA ---------- */
+
+/*
+ * The live camera fills the entire phone screen.
+ * The captured file itself still uses the camera's native
+ * videoWidth/videoHeight ratio in captureStoryPhoto().
+ */
+#createStoryModal .story-camera-preview {
+  position: absolute !important;
+  inset: 0 !important;
+
+  width: 100vw !important;
+  height: 100dvh !important;
+
+  max-width: none !important;
+  max-height: none !important;
+
+  object-fit: cover !important;
+  object-position: center center !important;
+
+  background: #000 !important;
+}
+
+/* ---------- EDITOR: MAXIMUM MEDIA AREA ---------- */
+
+#createStoryModal .story-editor-screen {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  background: #000 !important;
+}
+
+#createStoryModal .story-editor-stage {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+
+  width: 100% !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  overflow: hidden !important;
+  background: #000 !important;
+}
+
+#createStoryModal .story-editor-preview {
+  position: absolute !important;
+  inset: 0 !important;
+
+  width: 100% !important;
+  height: 100% !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  overflow: hidden !important;
+  background: #000 !important;
+}
+
+/*
+ * Let the original file occupy as much of the editor
+ * as its aspect ratio allows, without stretching.
+ */
+#createStoryModal .story-editor-media {
+  width: auto !important;
+  height: auto !important;
+
+  max-width: calc(100vw - 8px) !important;
+  max-height: calc(100% - 8px) !important;
+
+  object-fit: contain !important;
+  object-position: center center !important;
+
+  margin: 0 auto !important;
+
+  display: block !important;
+}
+
+/* ---------- EDITOR TOP BAR ---------- */
+
+#createStoryModal .story-editor-topbar {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 50 !important;
+
+  min-height: 54px !important;
+
+  padding:
+    max(7px, env(safe-area-inset-top))
+    10px
+    7px !important;
+
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0,0,0,.72),
+      rgba(0,0,0,.20),
+      transparent
+    ) !important;
+}
+
+/* ---------- COMPACT BOTTOM TOOLBAR ---------- */
+
+#createStoryModal .story-editor-panel {
+  flex: 0 0 auto !important;
+
+  max-height: none !important;
+
+  padding:
+    4px
+    6px
+    max(6px, env(safe-area-inset-bottom))
+    !important;
+
+  background: rgba(10,10,10,.96) !important;
+
+  border-top:
+    1px solid rgba(255,255,255,.08) !important;
+
+  overflow: hidden !important;
+}
+
+/* One slim horizontal toolbar */
+#createStoryModal .story-editor-tools {
+  display: flex !important;
+  align-items: center !important;
+
+  width: 100% !important;
+
+  min-height: 46px !important;
+  height: 46px !important;
+
+  gap: 2px !important;
+
+  padding: 0 2px !important;
+
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+
+  scrollbar-width: none !important;
+}
+
+#createStoryModal .story-editor-tools::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Compact Telegram-like tool buttons */
+#createStoryModal .story-editor-tools button {
+  flex: 0 0 58px !important;
+
+  width: 58px !important;
+  min-width: 58px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+
+  padding: 2px 4px !important;
+
+  border: 0 !important;
+  border-radius: 9px !important;
+
+  background: transparent !important;
+  color: rgba(255,255,255,.78) !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  gap: 1px !important;
+}
+
+#createStoryModal .story-editor-tools button span {
+  display: block !important;
+
+  font-size: 18px !important;
+  line-height: 19px !important;
+}
+
+#createStoryModal .story-editor-tools button small {
+  display: block !important;
+
+  font-size: 8px !important;
+  line-height: 10px !important;
+
+  white-space: nowrap !important;
+}
+
+#createStoryModal .story-editor-tools button:active {
+  background: rgba(255,255,255,.12) !important;
+}
+
+/* ---------- SUB TOOLS: SMALL ---------- */
+
+#createStoryModal .story-filter-bar,
+#createStoryModal .story-editor-subpanel,
+#createStoryModal .story-video-trim {
+  margin: 2px 0 3px !important;
+  padding: 3px !important;
+
+  max-height: 52px !important;
+
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+
+  scrollbar-width: none !important;
+}
+
+#createStoryModal .story-filter-bar::-webkit-scrollbar,
+#createStoryModal .story-editor-subpanel::-webkit-scrollbar,
+#createStoryModal .story-video-trim::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Crop buttons */
+#createStoryModal .story-editor-subpanel button {
+  height: 34px !important;
+  min-height: 34px !important;
+
+  padding: 0 11px !important;
+
+  font-size: 11px !important;
+  border-radius: 8px !important;
+}
+
+/* Filter thumbnails */
+#createStoryModal .story-filter-bar button {
+  width: 48px !important;
+  min-width: 48px !important;
+
+  gap: 2px !important;
+}
+
+#createStoryModal .story-filter-preview {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 8px !important;
+}
+
+/* ---------- CAPTION / POST: COMPACT ---------- */
+
+#createStoryModal .story-editor-caption-wrap {
+  display: flex !important;
+  align-items: center !important;
+
+  gap: 5px !important;
+
+  margin-top: 3px !important;
+}
+
+#createStoryModal .story-editor-caption-wrap textarea {
+  flex: 1 1 auto !important;
+
+  min-height: 34px !important;
+  max-height: 42px !important;
+
+  margin: 0 !important;
+  padding: 8px 10px !important;
+
+  resize: none !important;
+
+  border-radius: 18px !important;
+}
+
+#createStoryModal .story-publish-button {
+  flex: 0 0 auto !important;
+
+  width: auto !important;
+  min-width: 74px !important;
+
+  height: 36px !important;
+  min-height: 36px !important;
+
+  margin: 0 !important;
+  padding: 0 12px !important;
+
+  border-radius: 18px !important;
+
+  font-size: 11px !important;
+}
+
+/* ---------- OWN STORY PLUS ---------- */
+
+.story-own-plus {
+  z-index: 20 !important;
+
+  width: 25px !important;
+  height: 25px !important;
+
+  min-width: 25px !important;
+  min-height: 25px !important;
+
+  border-radius: 50% !important;
+
+  display: grid !important;
+  place-items: center !important;
+
+  background: #ffffff !important;
+  color: #000000 !important;
+
+  border: 3px solid #111111 !important;
+
+  font-size: 21px !important;
+  font-weight: 900 !important;
+
+  line-height: 20px !important;
+
+  text-align: center !important;
+
+  box-shadow:
+    0 2px 7px rgba(0,0,0,.65) !important;
+}
+
+
+/* =========================================================
+   VYBE STORY EDITOR V5 — TELEGRAM STYLE LAYERS
+   ========================================================= */
+
+.story-editor-overlay {
+  pointer-events: none;
+  overflow: hidden;
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+}
+
+.story-editor-text-overlay,
+.story-editor-emoji-overlay {
+  position: absolute;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  z-index: 30;
+  transform-origin: center center;
+  white-space: pre-wrap;
+  text-align: center;
+}
+
+.story-editor-text-overlay:active,
+.story-editor-emoji-overlay:active {
+  cursor: grabbing;
+}
+
+.story-editor-text-overlay {
+  max-width: 82%;
+  padding: 5px 10px;
+  font-size: clamp(22px, 7vw, 42px);
+  font-weight: 700;
+  line-height: 1.15;
+  text-shadow:
+    0 2px 5px rgba(0,0,0,.65),
+    0 0 10px rgba(0,0,0,.25);
+}
+
+.story-editor-emoji-overlay {
+  font-size: clamp(48px, 15vw, 92px);
+  line-height: 1;
+  filter: drop-shadow(0 3px 5px rgba(0,0,0,.4));
+}
+
+.story-editor-tools {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 7px 8px;
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.story-editor-tools::-webkit-scrollbar {
+  display: none;
+}
+
+.story-editor-tools button {
+  flex: 0 0 auto;
+  min-width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(255,255,255,.10);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px 7px;
+  font: inherit;
+}
+
+.story-editor-tools button span {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.story-editor-tools button small {
+  font-size: 9px;
+  opacity: .82;
+  line-height: 1;
+}
+
+.story-editor-tools .story-editor-next-button {
+  min-width: 58px;
+  margin-left: 3px;
+  background: rgba(255,255,255,.18);
+  font-weight: 700;
+}
+
+.story-editor-next-button span {
+  font-size: 27px !important;
+}
+
+.story-emoji-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.story-emoji-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.story-emoji-bar button {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255,255,255,.09);
+  font-size: 25px;
+  line-height: 1;
+}
+
+.story-editor-preview,
+.story-editor-stage,
+.story-final-preview-stage {
+  position: relative;
+  overflow: hidden;
+}
+
+.story-editor-preview img,
+.story-editor-preview video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.story-editor-drawing-dot {
+  pointer-events: none;
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+}
+
+/* Final preview */
+
+.story-final-preview-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+
+.story-final-preview-screen.hidden {
+  display: none !important;
+}
+
+.story-final-preview-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.story-final-preview-topbar {
+  flex: 0 0 auto;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  z-index: 10;
+}
+
+.story-final-preview-topbar button {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.10);
+  color: #fff;
+  font-size: 29px;
+  line-height: 1;
+}
+
+.story-final-preview {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.story-final-preview img,
+.story-final-preview video,
+.story-final-preview > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.story-final-preview .story-editor-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.story-final-bottom {
+  flex: 0 0 auto;
+  padding:
+    8px
+    max(8px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom))
+    max(8px, env(safe-area-inset-left));
+  background: rgba(0,0,0,.88);
+}
+
+#storyFinalCaption {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  max-height: 100px;
+  resize: none;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 13px;
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  padding: 10px 12px;
+  outline: none;
+  font: inherit;
+  margin-bottom: 8px;
+}
+
+#storyFinalPostButton {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+}

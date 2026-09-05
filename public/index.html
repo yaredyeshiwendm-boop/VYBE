@@ -471,56 +471,513 @@
   </div>
 
     <!-- CREATE POST MODAL -->
-    <!-- CREATE STORY MODAL -->
-<div id="createStoryModal" class="modal hidden">
-  <div class="modal-backdrop"></div>
+    <!-- CREATE STORY / CAMERA COMPOSER -->
+    <div id="createStoryModal" class="story-composer hidden">
 
-  <div class="modal-card story-modal-card">
-    <div class="modal-header">
-      <h2>Add Story</h2>
-      <button id="closeCreateStory" type="button">×</button>
+      <!-- CAMERA -->
+      <section id="storyCameraScreen" class="story-camera-screen">
+
+        <video
+          id="storyCameraPreview"
+          class="story-camera-preview"
+          autoplay
+          muted
+          playsinline
+        ></video>
+
+        <div
+          id="storyCameraFallback"
+          class="story-camera-fallback hidden"
+        >
+          <div class="story-camera-fallback-icon">⌁</div>
+          <strong>Camera unavailable</strong>
+          <span>Choose a photo or video from your device.</span>
+        </div>
+
+        <div class="story-camera-top">
+          <button
+            id="closeCreateStory"
+            class="story-camera-close"
+            type="button"
+            aria-label="Close"
+          >×</button>
+
+          <span class="story-camera-title">Story</span>
+
+          <button
+            id="storyFlashButton"
+            class="story-camera-top-button"
+            type="button"
+            aria-label="Flash"
+          >⚡</button>
+        </div>
+
+        <div class="story-camera-bottom">
+
+          <div class="story-camera-controls">
+
+            <button
+              id="storyGalleryButton"
+              class="story-camera-side-button story-gallery-button"
+              type="button"
+              aria-label="Open gallery"
+            >
+              <span class="story-gallery-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+                  <circle cx="8.5" cy="9" r="1.5"></circle>
+                  <path d="M5 17l4.5-4.5 3 3 2-2 4.5 4.5"></path>
+                </svg>
+              </span>
+              <small>Gallery</small>
+            </button>
+
+            <button
+              id="storyCaptureButton"
+              class="story-capture-button"
+              type="button"
+              aria-label="Take photo"
+            >
+              <span></span>
+            </button>
+
+            <button
+              id="storySwitchCamera"
+              class="story-camera-side-button"
+              type="button"
+              aria-label="Switch camera"
+            >
+              <span class="story-switch-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M7 7h10l2 3v7H5v-7l2-3z"></path>
+                  <circle cx="12" cy="13.5" r="3"></circle>
+                  <path d="M8 5.5h3"></path>
+                  <path d="M17.5 4.5l2 2-2 2"></path>
+                  <path d="M19.5 6.5h-4"></path>
+                </svg>
+              </span>
+              <small>Camera</small>
+            </button>
+
+          </div>
+
+          <div
+            id="storyModeSwitch"
+            class="story-mode-switch"
+            role="tablist"
+            aria-label="Story camera mode"
+          >
+            <button
+              type="button"
+              class="active"
+              data-story-mode="photo"
+              role="tab"
+              aria-selected="true"
+            >PHOTO</button>
+
+            <button
+              type="button"
+              data-story-mode="video"
+              role="tab"
+              aria-selected="false"
+            >VIDEO</button>
+          </div>
+
+        </div>
+
+        <input
+          id="storyMediaInput"
+          type="file"
+          accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.avif,.heic,.heif,.mp4,.mov,.m4v,.webm,.3gp"
+          hidden
+        />
+
+      </section>
+
+      <!-- EDITOR -->
+      <section
+        id="storyEditorScreen"
+        class="story-editor-screen hidden"
+      >
+
+        <div class="story-editor-stage">
+
+          <div class="story-editor-topbar">
+
+            <button
+              id="storyEditorBack"
+              class="story-editor-icon-button"
+              type="button"
+              aria-label="Back"
+            >‹</button>
+
+            <div class="story-editor-top-title">
+              <span>New Story</span>
+              <small id="storyEditorMediaType">Photo</small>
+            </div>
+
+            <button
+              id="storyEditorDone"
+              class="story-editor-done"
+              type="button"
+              aria-label="Next"
+            >Next</button>
+
+          </div>
+
+          <div
+            id="storyEditorPreview"
+            class="story-editor-preview"
+          ></div>
+
+          <div
+            id="storyEditorOverlay"
+            class="story-editor-overlay"
+          ></div>
+
+          <button
+            id="storyEditorUndo"
+            class="story-editor-floating-button"
+            type="button"
+            aria-label="Undo"
+            disabled
+          >↶</button>
+
+          <button
+            id="storyEditorTextButton"
+            class="story-editor-floating-button story-editor-text-button"
+            type="button"
+            aria-label="Add text"
+          >Aa</button>
+
+          <div
+            id="storyEditorDrawBar"
+            class="story-editor-draw-bar hidden"
+          >
+            <button
+              type="button"
+              data-draw-color="#ffffff"
+              class="active"
+              aria-label="White"
+            ></button>
+
+            <button
+              type="button"
+              data-draw-color="#ff3b5c"
+              aria-label="Red"
+            ></button>
+
+            <button
+              type="button"
+              data-draw-color="#ffd60a"
+              aria-label="Yellow"
+            ></button>
+
+            <button
+              type="button"
+              data-draw-color="#30d158"
+              aria-label="Green"
+            ></button>
+
+            <button
+              type="button"
+              data-draw-color="#0a84ff"
+              aria-label="Blue"
+            ></button>
+
+            <button
+              id="storyDrawClose"
+              type="button"
+              aria-label="Close drawing"
+            >✓</button>
+          </div>
+
+          <div
+            id="storyEditorTextBar"
+            class="story-editor-text-bar hidden"
+          >
+            <input
+              id="storyTextInput"
+              type="text"
+              maxlength="120"
+              placeholder="Type something..."
+              autocomplete="off"
+            />
+
+            <button
+              id="storyTextColor"
+              type="button"
+              aria-label="Change text color"
+            >A</button>
+
+            <button
+              id="storyTextDone"
+              type="button"
+              aria-label="Finish text"
+            >✓</button>
+          </div>
+
+        </div>
+
+        <div class="story-editor-panel">
+
+          <div
+            id="storyEditorToolStrip"
+            class="story-editor-tools"
+          >
+
+            <button type="button" data-story-tool="crop">
+              <span>✂</span>
+              <small>Crop</small>
+            </button>
+
+            <button type="button" data-story-tool="draw">
+              <span>🖌</span>
+              <small>Draw</small>
+            </button>
+
+            <button type="button" data-story-tool="emoji">
+              <span>😀</span>
+              <small>Emoji</small>
+            </button>
+
+            <button type="button" data-story-tool="text">
+              <span>Aa</span>
+              <small>Text</small>
+            </button>
+
+            <button type="button" data-story-tool="filter">
+              <span>✦</span>
+              <small>Filters</small>
+            </button>
+
+            <button type="button" data-story-tool="rotate">
+              <span>↻</span>
+              <small>Rotate</small>
+            </button>
+
+            <button
+              id="storyEditorNextButton"
+              type="button"
+              class="story-editor-next-button"
+            >
+              <span>›</span>
+              <small>Next</small>
+            </button>
+
+          </div>
+
+          <div
+            id="storyEmojiBar"
+            class="story-emoji-bar hidden"
+          >
+            <button type="button" data-story-emoji="😀">😀</button>
+            <button type="button" data-story-emoji="😂">😂</button>
+            <button type="button" data-story-emoji="😍">😍</button>
+            <button type="button" data-story-emoji="🥰">🥰</button>
+            <button type="button" data-story-emoji="😎">😎</button>
+            <button type="button" data-story-emoji="🔥">🔥</button>
+            <button type="button" data-story-emoji="❤️">❤️</button>
+            <button type="button" data-story-emoji="✨">✨</button>
+            <button type="button" data-story-emoji="💯">💯</button>
+            <button type="button" data-story-emoji="👍">👍</button>
+            <button type="button" data-story-emoji="🎉">🎉</button>
+          </div>
+
+          <div id="storyFilterBar"
+            class="story-filter-bar hidden"
+          >
+            <button
+              type="button"
+              data-story-filter="none"
+              class="active"
+            >
+              <span class="story-filter-preview"></span>
+              <small>Original</small>
+            </button>
+
+            <button
+              type="button"
+              data-story-filter="bright"
+            >
+              <span class="story-filter-preview filter-bright"></span>
+              <small>Bright</small>
+            </button>
+
+            <button
+              type="button"
+              data-story-filter="vivid"
+            >
+              <span class="story-filter-preview filter-vivid"></span>
+              <small>Vivid</small>
+            </button>
+
+            <button
+              type="button"
+              data-story-filter="mono"
+            >
+              <span class="story-filter-preview filter-mono"></span>
+              <small>Mono</small>
+            </button>
+
+            <button
+              type="button"
+              data-story-filter="warm"
+            >
+              <span class="story-filter-preview filter-warm"></span>
+              <small>Warm</small>
+            </button>
+          </div>
+
+          <div
+            id="storyCropBar"
+            class="story-editor-subpanel hidden"
+          >
+            <button
+              type="button"
+              data-story-ratio="free"
+              class="active"
+            >Free</button>
+
+            <button
+              type="button"
+              data-story-ratio="9:16"
+            >9:16</button>
+
+            <button
+              type="button"
+              data-story-ratio="1:1"
+            >1:1</button>
+
+            <button
+              type="button"
+              data-story-ratio="4:5"
+            >4:5</button>
+
+            <button
+              id="storyCropApply"
+              type="button"
+              class="primary"
+            >Apply</button>
+          </div>
+
+          <div
+            id="storyVideoTrim"
+            class="story-video-trim hidden"
+          >
+            <div class="story-trim-header">
+              <strong>Trim</strong>
+              <span id="storyTrimLabel">00:00 — 00:00</span>
+            </div>
+
+            <div class="story-trim-track">
+              <input
+                id="storyTrimStart"
+                type="range"
+                min="0"
+                max="100"
+                value="0"
+              />
+
+              <input
+                id="storyTrimEnd"
+                type="range"
+                min="0"
+                max="100"
+                value="100"
+              />
+            </div>
+          </div>
+
+          <div class="story-editor-caption-wrap">
+
+            <textarea
+              id="storyCaption"
+              maxlength="500"
+              rows="2"
+              placeholder="Add a caption..."
+            ></textarea>
+
+            <div
+              id="createStoryError"
+              class="form-error hidden"
+            ></div>
+
+            <button
+              id="publishStoryButton"
+              class="story-publish-button hidden"
+              type="button"
+            >
+              <span class="button-text">Post Story</span>
+              <span class="button-loader hidden">Posting...</span>
+            </button>
+
+          </div>
+
+        </div>
+
+      </section>
+
     </div>
 
-    <form id="createStoryForm">
-      <label class="media-picker-button" for="storyMediaInput">
-        <span>＋</span>
-        <span>Choose Photo / Video</span>
-      </label>
+<!-- STORY FINAL PREVIEW -->
+    <section
+      id="storyFinalPreviewScreen"
+      class="story-final-preview-screen hidden"
+    >
 
-      <input
-        id="storyMediaInput"
-        type="file"
-        accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
-        hidden
-      />
+      <div class="story-final-preview-stage">
 
-      <div
-        id="storyMediaPreview"
-        class="story-media-preview hidden"
-      ></div>
+        <div class="story-final-preview-topbar">
 
-      <textarea
-        id="storyCaption"
-        maxlength="500"
-        rows="3"
-        placeholder="Add a caption..."
-      ></textarea>
+          <button
+            id="storyFinalBack"
+            class="story-final-back"
+            type="button"
+            aria-label="Back to editor"
+          >‹</button>
 
-      <div id="createStoryError" class="form-error hidden"></div>
+          <span>New Story</span>
 
-      <button
-        id="publishStoryButton"
-        class="primary-button"
-        type="submit"
-      >
-        <span class="button-text">Share Story</span>
-        <span class="button-loader hidden">Sharing...</span>
-      </button>
-    </form>
-  </div>
-</div>
+          <button
+            id="storyFinalClose"
+            class="story-final-close"
+            type="button"
+            aria-label="Close"
+          >×</button>
 
-<!-- STORY VIEWER -->
+        </div>
+
+        <div
+          id="storyFinalPreview"
+          class="story-final-preview"
+        ></div>
+
+      </div>
+
+      <div class="story-final-bottom">
+
+        <textarea
+          id="storyFinalCaption"
+          maxlength="500"
+          rows="2"
+          placeholder="Add caption..."
+        ></textarea>
+
+        <button
+          id="storyFinalPostButton"
+          class="story-publish-button"
+          type="button"
+        >
+          <span class="button-text">Post Story</span>
+          <span class="button-loader hidden">Posting...</span>
+        </button>
+
+      </div>
+
+    </section>
+
+    <!-- STORY VIEWER -->
 <div id="storyViewer" class="story-viewer hidden">
 
   <div class="story-progress" id="storyProgress"></div>

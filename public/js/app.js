@@ -5,7 +5,47 @@ const state = {
   authenticated: false,
   createPostMedia: [],
   stories: [],
-  activeStoryIndex: -1
+  activeStoryIndex: -1,
+
+  /* Story composer */
+  createStoryMedia: null,
+  storyCameraStream: null,
+  storyCameraFacing: "environment",
+  storyCameraMode: "photo",
+  storyMediaFile: null,
+  storyMediaUrl: null,
+  storyRecorder: null,
+  storyRecorderChunks: [],
+  storyRecording: false,
+  storyVideoDuration: 0,
+  storyVideoMuted: false,
+  storyRotation: 0,
+  storyFilter: "none",
+
+  /* Story editor */
+  storyCropRatio: "free",
+  storyCrop: { x: 0, y: 0, w: 1, h: 1 },
+  storyCropEditing: false,
+  storyTrimStart: 0,
+  storyTrimEnd: 0,
+  storyEditorHistory: [],
+  storyDrawings: [],
+  storyDrawColor: "#ffffff",
+  storyBrush: "marker",
+  storyBrushSize: 7,
+  storyTexts: [],
+  storyTextColor: "#ffffff",
+  storyTextBackground: "none",
+  storyTextFont: "sans-serif",
+
+  /* Story sharing */
+  storyShareAudience: "everyone",
+  storyShareExcludedIds: [],
+  storyShareSelectedIds: [],
+  storyShareAllowScreenshots: true,
+  storySharePeopleMode: null,
+  storySharePeople: [],
+  storySharePeopleSearchTimer: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -33,8 +73,14 @@ function hide(element) {
 }
 
 function hideDynamicScreens() {
+  const dmScreen = document.getElementById("dmScreen");
+
+  if (dmScreen && !dmScreen.classList.contains("hidden")) {
+    cleanupDMView();
+  }
+
   document
-    .querySelectorAll("#vybzScreen, #dmScreen, #searchScreen, #activityScreen")
+    .querySelectorAll("#vybzScreen, #searchScreen, #activityScreen")
     .forEach(screen => {
       screen.classList.add("hidden");
     });
@@ -3538,138 +3584,2104 @@ function renderStories() {
     }).join("");
 }
 
+
+function getStoryComposerElements() {
+  return {
+    modal: document.getElementById("createStoryModal"),
+
+    cameraScreen: document.getElementById("storyCameraScreen"),
+    cameraPreview: document.getElementById("storyCameraPreview"),
+    cameraFallback: document.getElementById("storyCameraFallback"),
+    mediaInput: document.getElementById("storyMediaInput"),
+    captureButton: document.getElementById("storyCaptureButton"),
+    modeSwitch: document.getElementById("storyModeSwitch"),
+
+    editorScreen: document.getElementById("storyEditorScreen"),
+    editorPreview: document.getElementById("storyEditorPreview"),
+    editorOverlay: document.getElementById("storyEditorOverlay"),
+    editorMediaType: document.getElementById("storyEditorMediaType"),
+    editorBack: document.getElementById("storyEditorBack"),
+    editorDone: document.getElementById("storyEditorDone"),
+    editorUndo: document.getElementById("storyEditorUndo"),
+    textButton: document.getElementById("storyEditorTextButton"),
+
+    drawBar: document.getElementById("storyEditorDrawBar"),
+    drawClose: document.getElementById("storyDrawClose"),
+
+    textBar: document.getElementById("storyEditorTextBar"),
+    textInput: document.getElementById("storyTextInput"),
+    textColor: document.getElementById("storyTextColor"),
+    textBackground: document.getElementById("storyTextBackground"),
+    textFont: document.getElementById("storyTextFont"),
+    textDone: document.getElementById("storyTextDone"),
+
+    filterBar: document.getElementById("storyFilterBar"),
+    cropBar: document.getElementById("storyCropBar"),
+    cropApply: document.getElementById("storyCropApply"),
+
+    soundButton: document.getElementById("storySoundButton"),
+    trimPanel: document.getElementById("storyVideoTrim"),
+    trimStart: document.getElementById("storyTrimStart"),
+    trimEnd: document.getElementById("storyTrimEnd"),
+    trimLabel: document.getElementById("storyTrimLabel"),
+
+    caption: document.getElementById("storyCaption"),
+    error: document.getElementById("createStoryError"),
+    publishButton: document.getElementById("publishStoryButton"),
+    editorNextButton: document.getElementById("storyEditorNextButton"),
+
+    emojiBar: document.getElementById("storyEmojiBar"),
+    emojiSearch: document.getElementById("storyEmojiSearch"),
+    emojiTabs: document.getElementById("storyEmojiTabs"),
+
+    shareScreen: document.getElementById("storyShareScreen"),
+    shareBack: document.getElementById("storyShareBack"),
+    shareClose: document.getElementById("storyShareClose"),
+    shareError: document.getElementById("storyShareError"),
+    sharePostButton: document.getElementById("storySharePostButton"),
+    shareAllowScreenshots: document.getElementById("storyShareAllowScreenshots"),
+    sharePeoplePanel: document.getElementById("storySharePeoplePanel"),
+    sharePeopleSearch: document.getElementById("storySharePeopleSearch"),
+    sharePeopleList: document.getElementById("storySharePeopleList"),
+    sharePeopleDone: document.getElementById("storySharePeopleDone")
+  };
+}
+
+function resetStoryComposerState() {
+  state.createStoryMedia = null;
+  state.storyMediaFile = null;
+  state.storyMediaUrl = null;
+  state.storyRecording = false;
+  state.storyRecorder = null;
+  state.storyRecorderChunks = [];
+  state.storyVideoDuration = 0;
+  state.storyVideoMuted = false;
+  state.storyRotation = 0;
+  state.storyFilter = "none";
+
+  state.storyCropRatio = "free";
+  state.storyCrop = { x: 0, y: 0, w: 1, h: 1 };
+  state.storyCropEditing = false;
+
+  state.storyTrimStart = 0;
+  state.storyTrimEnd = 0;
+
+  state.storyEditorHistory = [];
+  state.storyDrawings = [];
+  state.storyDrawColor = "#ffffff";
+  state.storyBrush = "marker";
+  state.storyBrushSize = 7;
+
+  state.storyTexts = [];
+  state.storyEmojis = [];
+  state.storyTextColor = "#ffffff";
+  state.storyTextBackground = "none";
+  state.storyTextFont = "sans-serif";
+
+  state.storyOriginalFile = null;
+  state.storyEditsBaked = false;
+
+  state.storyShareAudience = "everyone";
+  state.storyShareExcludedIds = [];
+  state.storyShareSelectedIds = [];
+  state.storyShareAllowScreenshots = true;
+  state.storySharePeopleMode = null;
+  state.storySharePeople = [];
+}
+
+function stopStoryCamera() {
+  if (state.storyCameraStream) {
+    state.storyCameraStream.getTracks().forEach(track => track.stop());
+    state.storyCameraStream = null;
+  }
+
+  const { cameraPreview } = getStoryComposerElements();
+
+  if (cameraPreview) {
+    cameraPreview.pause();
+    cameraPreview.srcObject = null;
+    cameraPreview.style.transform = "none";
+  }
+}
+
+async function startStoryCamera() {
+  const {
+    cameraPreview,
+    cameraFallback,
+    captureButton,
+    error
+  } = getStoryComposerElements();
+
+  if (!cameraPreview) return;
+
+  stopStoryCamera();
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    cameraFallback?.classList.remove("hidden");
+    captureButton?.classList.add("hidden");
+    return;
+  }
+
+  try {
+    const isVideo = state.storyCameraMode === "video";
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: state.storyCameraFacing,
+        width: {
+          ideal: 1280
+        },
+        height: {
+          ideal: 720
+        }
+      },
+      audio: isVideo
+    });
+
+    state.storyCameraStream = stream;
+    cameraPreview.srcObject = stream;
+
+    /*
+     * Selfie preview should look like a normal mirror.
+     * The captured photo is also mirrored separately in
+     * captureStoryPhoto().
+     */
+    cameraPreview.style.transform =
+      state.storyCameraFacing === "user"
+        ? "scaleX(-1)"
+        : "none";
+
+    cameraFallback?.classList.add("hidden");
+    captureButton?.classList.remove("hidden");
+
+    updateStoryCameraUI();
+
+    await cameraPreview.play().catch(() => {});
+  } catch (errorValue) {
+    console.error("Story camera error:", errorValue);
+
+    cameraFallback?.classList.remove("hidden");
+    captureButton?.classList.add("hidden");
+
+    showError(
+      error,
+      "Camera permission is needed. You can still choose a photo or video from Gallery."
+    );
+  }
+}
+
+
+function updateStoryCameraUI() {
+  const { captureButton } = getStoryComposerElements();
+
+  document
+    .querySelectorAll("[data-story-mode]")
+    .forEach(button => {
+      const active =
+        button.dataset.storyMode === state.storyCameraMode;
+
+      button.classList.toggle("active", active);
+      button.setAttribute(
+        "aria-selected",
+        active ? "true" : "false"
+      );
+    });
+
+  if (captureButton) {
+    captureButton.classList.toggle(
+      "video-mode",
+      state.storyCameraMode === "video"
+    );
+
+    captureButton.classList.toggle(
+      "recording",
+      state.storyRecording
+    );
+
+    captureButton.setAttribute(
+      "aria-label",
+      state.storyCameraMode === "video"
+        ? (state.storyRecording
+            ? "Stop recording"
+            : "Record video")
+        : "Take photo"
+    );
+  }
+}
+
 function openCreateStory() {
-  const modal =
-    document.getElementById("createStoryModal");
+  const {
+    modal,
+    cameraScreen,
+    editorScreen,
+    mediaInput,
+    caption,
+    error,
+    editorPreview,
+    editorOverlay,
+    drawBar,
+    textBar,
+    filterBar,
+    cropBar,
+    trimPanel,
+    finalScreen,
+    finalPreview,
+    finalCaption
+  } = getStoryComposerElements();
 
-  const input =
-    document.getElementById("storyMediaInput");
+  resetStoryComposerState();
+  stopStoryCamera();
 
-  const caption =
-    document.getElementById("storyCaption");
+  if (mediaInput) mediaInput.value = "";
+  if (caption) caption.value = "";
+  if (editorPreview) editorPreview.replaceChildren();
+  if (editorOverlay) editorOverlay.replaceChildren();
 
-  const error =
-    document.getElementById("createStoryError");
+  finalScreen?.classList.add("hidden");
+  finalPreview?.replaceChildren();
+  if (finalCaption) finalCaption.value = "";
+
+  drawBar?.classList.add("hidden");
+  textBar?.classList.add("hidden");
+  filterBar?.classList.add("hidden");
+  cropBar?.classList.add("hidden");
+  trimPanel?.classList.add("hidden");
 
   clearError(error);
 
-  input.value = "";
-  caption.value = "";
+  state.storyCameraMode = "photo";
+  state.storyCameraFacing = "environment";
 
-  document.getElementById("storyMediaPreview")
-    .innerHTML = "";
+  editorScreen?.classList.add("hidden");
+  cameraScreen?.classList.remove("hidden");
 
-  document.getElementById("storyMediaPreview")
-    .classList.add("hidden");
-
-  state.createStoryMedia = null;
+  updateStoryCameraUI();
 
   show(modal);
+
+  startStoryCamera();
 }
 
 function closeCreateStory() {
-  hide(document.getElementById("createStoryModal"));
+  const {
+    modal,
+    finalScreen,
+    finalPreview,
+    finalCaption
+  } = getStoryComposerElements();
+
+  if (state.storyRecording && state.storyRecorder) {
+    try {
+      state.storyRecorder.stop();
+    } catch {}
+  }
+
+  stopStoryCamera();
+
+  if (state.storyMediaUrl) {
+    URL.revokeObjectURL(state.storyMediaUrl);
+  }
+
+  finalScreen?.classList.add("hidden");
+  finalPreview?.replaceChildren();
+  if (finalCaption) finalCaption.value = "";
+
+  resetStoryComposerState();
+
+  hide(modal);
 }
 
-async function handleStoryMediaSelection(event) {
-  const file = event.target.files?.[0];
+async function setStoryMode(mode) {
+  if (state.storyRecording) return;
+
+  state.storyCameraMode =
+    mode === "video" ? "video" : "photo";
+
+  updateStoryCameraUI();
+
+  await startStoryCamera();
+}
+
+async function captureStoryPhoto() {
+  const {
+    cameraPreview,
+    error
+  } = getStoryComposerElements();
+
+  if (!state.storyCameraStream || !cameraPreview?.videoWidth) {
+    showError(error, "Camera is not ready yet.");
+    return;
+  }
+
+  /*
+   * Use the REAL camera frame dimensions.
+   * Do not use CSS dimensions or force 9:16 here.
+   * This prevents the captured image from becoming
+   * unnaturally tall/compressed.
+   */
+  const sourceWidth = cameraPreview.videoWidth;
+  const sourceHeight = cameraPreview.videoHeight;
+
+  const maxSize = 2048;
+
+  const scale = Math.min(
+    1,
+    maxSize / sourceWidth,
+    maxSize / sourceHeight
+  );
+
+  const width = Math.round(sourceWidth * scale);
+  const height = Math.round(sourceHeight * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) {
+    showError(error, "Could not capture the photo.");
+    return;
+  }
+
+  /*
+   * Keep selfie capture natural.
+   * Mirror only the front camera so the saved image
+   * matches the preview orientation.
+   */
+  if (state.storyCameraFacing === "user") {
+    ctx.translate(width, 0);
+    ctx.scale(-1, 1);
+  }
+
+  ctx.drawImage(
+    cameraPreview,
+    0,
+    0,
+    width,
+    height
+  );
+
+  const blob = await new Promise(resolve =>
+    canvas.toBlob(
+      resolve,
+      "image/jpeg",
+      0.94
+    )
+  );
+
+  if (!blob) {
+    showError(error, "Could not create the photo.");
+    return;
+  }
+
+  const file = new File(
+    [blob],
+    `story-${Date.now()}.jpg`,
+    {
+      type: "image/jpeg"
+    }
+  );
+
+  await prepareStoryMedia(file);
+}
+
+
+async function captureStoryVideo() {
+  if (state.storyRecording) {
+    stopStoryRecording();
+    return;
+  }
+
+  startStoryRecording();
+}
+
+function storyFilterCss(filter) {
+  switch (filter) {
+    case "bright":
+      return "brightness(1.12) contrast(1.05)";
+
+    case "vivid":
+      return "saturate(1.45) contrast(1.08)";
+
+    case "mono":
+      return "grayscale(1) contrast(1.08)";
+
+    case "warm":
+      return "sepia(.32) saturate(1.18) contrast(1.04)";
+
+    default:
+      return "none";
+  }
+}
+
+function storyApplyPreviewTransform() {
+  const {
+    editorPreview
+  } = getStoryComposerElements();
+
+  const media =
+    editorPreview?.querySelector(
+      ".story-editor-media"
+    );
+
+  if (!media) return;
+
+  media.style.transform =
+    `rotate(${state.storyRotation}deg)`;
+
+  media.style.filter =
+    storyFilterCss(state.storyFilter);
+}
+
+function storyPushHistory() {
+  state.storyEditorHistory ||= [];
+
+  state.storyEditorHistory.push({
+    rotation: state.storyRotation,
+    filter: state.storyFilter,
+    drawings: JSON.parse(
+      JSON.stringify(state.storyDrawings || [])
+    ),
+    texts: JSON.parse(
+      JSON.stringify(state.storyTexts || [])
+    ),
+    emojis: JSON.parse(
+      JSON.stringify(state.storyEmojis || [])
+    )
+  });
+
+  if (state.storyEditorHistory.length > 30) {
+    state.storyEditorHistory.shift();
+  }
+
+  const undo =
+    document.getElementById("storyEditorUndo");
+
+  if (undo) undo.disabled = false;
+}
+
+function storyRestoreSnapshot(snapshot) {
+  if (!snapshot) return;
+
+  state.storyRotation = snapshot.rotation || 0;
+  state.storyFilter = snapshot.filter || "none";
+  state.storyDrawings = snapshot.drawings || [];
+  state.storyTexts = snapshot.texts || [];
+  state.storyEmojis = snapshot.emojis || [];
+
+  storyApplyPreviewTransform();
+  renderStoryEditorOverlay();
+
+  const undo =
+    document.getElementById("storyEditorUndo");
+
+  if (undo) {
+    undo.disabled =
+      !state.storyEditorHistory?.length;
+  }
+}
+
+function storyUndo() {
+  if (!state.storyEditorHistory?.length) {
+    return;
+  }
+
+  const snapshot =
+    state.storyEditorHistory.pop();
+
+  storyRestoreSnapshot(snapshot);
+
+  const undo =
+    document.getElementById("storyEditorUndo");
+
+  if (undo) {
+    undo.disabled =
+      !state.storyEditorHistory.length;
+  }
+}
+
+function renderStoryEditorOverlay() {
+  const {
+    editorOverlay
+  } = getStoryComposerElements();
+
+  if (!editorOverlay) return;
+
+  editorOverlay.replaceChildren();
+
+  /* REAL DRAWING SVG */
+  if (state.storyDrawings?.length) {
+    const svg =
+      document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "svg"
+      );
+
+    svg.classList.add(
+      "story-drawing-svg"
+    );
+
+    svg.setAttribute(
+      "viewBox",
+      "0 0 1000 1000"
+    );
+
+    svg.setAttribute(
+      "preserveAspectRatio",
+      "none"
+    );
+
+    state.storyDrawings.forEach(stroke => {
+      if (!stroke?.points?.length) return;
+
+      const polyline =
+        document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "polyline"
+        );
+
+      polyline.setAttribute(
+        "points",
+        stroke.points
+          .map(point =>
+            `${point.x * 1000},${point.y * 1000}`
+          )
+          .join(" ")
+      );
+
+      polyline.setAttribute(
+        "fill",
+        "none"
+      );
+
+      polyline.setAttribute(
+        "stroke",
+        stroke.color || "#ffffff"
+      );
+
+      const size =
+        Math.max(
+          2,
+          Number(stroke.size) || 7
+        );
+
+      polyline.setAttribute(
+        "stroke-width",
+        size
+      );
+
+      polyline.setAttribute(
+        "stroke-linecap",
+        "round"
+      );
+
+      polyline.setAttribute(
+        "stroke-linejoin",
+        "round"
+      );
+
+      if (stroke.brush === "highlighter") {
+        polyline.setAttribute(
+          "stroke-opacity",
+          ".42"
+        );
+        polyline.setAttribute(
+          "stroke-width",
+          size * 2.6
+        );
+      }
+
+      if (stroke.brush === "neon") {
+        polyline.style.filter =
+          "drop-shadow(0 0 5px currentColor) drop-shadow(0 0 10px currentColor)";
+      }
+
+      svg.appendChild(polyline);
+    });
+
+    editorOverlay.appendChild(svg);
+  }
+
+  /* TEXT LAYERS */
+  (state.storyTexts || []).forEach(
+    (item, index) => {
+      const el =
+        document.createElement("div");
+
+      el.className =
+        "story-editor-text-overlay";
+
+      el.dataset.storyLayerType = "text";
+      el.dataset.storyLayerIndex =
+        String(index);
+
+      el.textContent = item.text;
+
+      el.style.left =
+        `${(item.x ?? 0.5) * 100}%`;
+
+      el.style.top =
+        `${(item.y ?? 0.5) * 100}%`;
+
+      el.style.color =
+        item.color || "#ffffff";
+
+      el.style.fontFamily =
+        item.font || "sans-serif";
+
+      el.style.transform =
+        `translate(-50%, -50%) scale(${item.scale || 1})`;
+
+      if (item.background &&
+          item.background !== "none") {
+        el.style.background =
+          item.background;
+        el.style.padding =
+          "6px 10px";
+        el.style.borderRadius =
+          "8px";
+      }
+
+      editorOverlay.appendChild(el);
+
+      attachStoryLayerGestures(
+        el,
+        item,
+        "text"
+      );
+    }
+  );
+
+  /* EMOJI LAYERS */
+  (state.storyEmojis || []).forEach(
+    (item, index) => {
+      const el =
+        document.createElement("div");
+
+      el.className =
+        "story-editor-emoji-overlay";
+
+      el.dataset.storyLayerType =
+        "emoji";
+
+      el.dataset.storyLayerIndex =
+        String(index);
+
+      el.textContent =
+        item.emoji;
+
+      el.style.left =
+        `${(item.x ?? 0.5) * 100}%`;
+
+      el.style.top =
+        `${(item.y ?? 0.5) * 100}%`;
+
+      el.style.transform =
+        `translate(-50%, -50%) scale(${item.scale || 1})`;
+
+      editorOverlay.appendChild(el);
+
+      attachStoryLayerGestures(
+        el,
+        item,
+        "emoji"
+      );
+    }
+  );
+
+  if (state.storyCropEditing) {
+    renderStoryCropBox();
+  }
+}
+
+function storyAddEmoji(emoji) {
+  if (!emoji) return;
+
+  storyPushHistory();
+
+  state.storyEmojis ||= [];
+
+  state.storyEmojis.push({
+    emoji,
+    x: 0.5,
+    y: 0.5,
+    scale: 1
+  });
+
+  renderStoryEditorOverlay();
+
+  const { emojiBar } = getStoryComposerElements();
+
+  emojiBar?.classList.remove("hidden");
+}
+
+function storyOpenTextEditor() {
+  const {
+    textBar,
+    textInput
+  } = getStoryComposerElements();
+
+  textBar?.classList.remove("hidden");
+
+  if (textInput) {
+    textInput.value = "";
+    textInput.focus();
+  }
+}
+
+function storyFinishText() {
+  const {
+    textBar,
+    textInput
+  } = getStoryComposerElements();
+
+  const text =
+    textInput?.value.trim();
+
+  if (text) {
+    storyPushHistory();
+
+    state.storyTexts ||= [];
+
+    state.storyTexts.push({
+      text,
+      x: 0.5,
+      y: 0.5,
+      scale: 1,
+      color: state.storyTextColor || "#ffffff"
+    });
+
+    renderStoryEditorOverlay();
+  }
+
+  textBar?.classList.add("hidden");
+}
+
+function storyStartDrawing() {
+  const {
+    drawBar,
+    editorOverlay
+  } = getStoryComposerElements();
+
+  if (!editorOverlay) return;
+
+  drawBar?.classList.remove("hidden");
+
+  editorOverlay.classList.add(
+    "drawing-active"
+  );
+
+  const handler = event => {
+    if (
+      event.target.closest(
+        ".story-editor-text-overlay"
+      )
+    ) {
+      return;
+    }
+
+    const rect =
+      editorOverlay.getBoundingClientRect();
+
+    const x =
+      (event.clientX - rect.left) /
+      rect.width;
+
+    const y =
+      (event.clientY - rect.top) /
+      rect.height;
+
+    if (
+      x < 0 ||
+      x > 1 ||
+      y < 0 ||
+      y > 1
+    ) {
+      return;
+    }
+
+    state.storyDrawings ||= [];
+
+    state.storyDrawings.push({
+      x,
+      y,
+      color:
+        state.storyTextColor ||
+        "#ffffff"
+    });
+
+    renderStoryEditorOverlay();
+  };
+
+  editorOverlay.onpointerdown = event => {
+    storyPushHistory();
+    handler(event);
+  };
+
+  editorOverlay.onpointermove = event => {
+    if (
+      event.buttons &
+      1
+    ) {
+      handler(event);
+    }
+  };
+}
+
+function storyStopDrawing() {
+  const {
+    drawBar,
+    editorOverlay
+  } = getStoryComposerElements();
+
+  drawBar?.classList.add("hidden");
+  editorOverlay?.classList.remove(
+    "drawing-active"
+  );
+
+  if (editorOverlay) {
+    editorOverlay.onpointerdown = null;
+    editorOverlay.onpointermove = null;
+  }
+}
+
+function storySetFilter(filter) {
+  storyPushHistory();
+
+  state.storyFilter =
+    filter || "none";
+
+  storyApplyPreviewTransform();
+}
+
+function storyRotate() {
+  storyPushHistory();
+
+  state.storyRotation =
+    (state.storyRotation + 90) %
+    360;
+
+  storyApplyPreviewTransform();
+}
+
+function storyOpenCrop() {
+  const {
+    cropBar
+  } = getStoryComposerElements();
+
+  cropBar?.classList.remove("hidden");
+}
+
+function storyPreviewCropRatio(ratio) {
+  const { editorPreview } =
+    getStoryComposerElements();
+
+  const media =
+    editorPreview?.querySelector(
+      ".story-editor-media"
+    );
+
+  if (!media) return;
+
+  const value = ratio || "free";
+
+  media.dataset.cropRatio = value;
+
+  media.classList.toggle(
+    "story-editor-crop-916",
+    value === "9:16"
+  );
+
+  media.classList.toggle(
+    "story-editor-crop-square",
+    value === "1:1"
+  );
+
+  media.classList.toggle(
+    "story-editor-crop-45",
+    value === "4:5"
+  );
+}
+
+function storyApplyCrop() {
+  const { cropBar } =
+    getStoryComposerElements();
+
+  storyPreviewCropRatio(
+    state.storyCropRatio || "free"
+  );
+
+  cropBar?.classList.add("hidden");
+}
+
+function storyOpenFilterPanel() {
+  const {
+    filterBar,
+    cropBar,
+    drawBar,
+    textBar
+  } = getStoryComposerElements();
+
+  cropBar?.classList.add("hidden");
+  drawBar?.classList.add("hidden");
+  textBar?.classList.add("hidden");
+
+  filterBar?.classList.toggle("hidden");
+}
+
+function storyOpenTool(tool) {
+  const {
+    filterBar,
+    cropBar,
+    drawBar,
+    textBar
+  } = getStoryComposerElements();
+
+  if (tool !== "filter") {
+    filterBar?.classList.add("hidden");
+  }
+
+  if (tool !== "crop") {
+    cropBar?.classList.add("hidden");
+  }
+
+  if (tool !== "draw") {
+    drawBar?.classList.add("hidden");
+    storyStopDrawing();
+  }
+
+  if (tool !== "text") {
+    textBar?.classList.add("hidden");
+  }
+
+  const { emojiBar } = getStoryComposerElements();
+
+  if (tool !== "emoji") {
+    emojiBar?.classList.add("hidden");
+  }
+
+  if (tool === "rotate") {
+    storyRotate();
+    return;
+  }
+
+  if (tool === "filter") {
+    storyOpenFilterPanel();
+    return;
+  }
+
+  if (tool === "crop") {
+    storyOpenCrop();
+    return;
+  }
+
+  if (tool === "draw") {
+    storyStartDrawing();
+    return;
+  }
+
+  if (tool === "text") {
+    storyOpenTextEditor();
+    return;
+  }
+
+  if (tool === "emoji") {
+    emojiBar?.classList.remove("hidden");
+    return;
+  }
+
+  if (tool === "sound") {
+    storyToggleSound();
+  }
+}
+
+function storyToggleSound() {
+  const video =
+    document.getElementById(
+      "storyEditorVideo"
+    );
+
+  if (!video) return;
+
+  state.storyVideoMuted =
+    !state.storyVideoMuted;
+
+  video.muted =
+    state.storyVideoMuted;
+
+  const button =
+    document.getElementById(
+      "storySoundButton"
+    );
+
+  const span =
+    button?.querySelector("span");
+
+  if (span) {
+    span.textContent =
+      state.storyVideoMuted
+        ? "🔇"
+        : "🔊";
+  }
+}
+
+function storyUpdateTrimLabel() {
+  const {
+    trimLabel
+  } = getStoryComposerElements();
+
+  const start =
+    Number(state.storyTrimStart) || 0;
+
+  const end =
+    Number(state.storyTrimEnd) ||
+    state.storyVideoDuration;
+
+  if (trimLabel) {
+    trimLabel.textContent =
+      `${formatStoryTime(start)} — ${formatStoryTime(end)}`;
+  }
+}
+
+function storySyncTrim(video) {
+  if (!video) return;
+
+  const start =
+    Number(state.storyTrimStart) || 0;
+
+  const end =
+    Number(state.storyTrimEnd) ||
+    state.storyVideoDuration;
+
+  if (
+    video.currentTime < start ||
+    video.currentTime > end
+  ) {
+    video.currentTime = start;
+  }
+}
+
+function storyPrepareVideoTrim(video) {
+  const {
+    trimStart,
+    trimEnd
+  } = getStoryComposerElements();
+
+  if (!video) return;
+
+  state.storyVideoDuration =
+    video.duration || 0;
+
+  state.storyTrimStart = 0;
+  state.storyTrimEnd =
+    state.storyVideoDuration;
+
+  if (trimStart) {
+    trimStart.value = "0";
+  }
+
+  if (trimEnd) {
+    trimEnd.value = "100";
+  }
+
+  storyUpdateTrimLabel();
+
+  video.addEventListener(
+    "timeupdate",
+    () => {
+      storySyncTrim(video);
+
+      const end =
+        Number(state.storyTrimEnd) ||
+        state.storyVideoDuration;
+
+      if (
+        end > 0 &&
+        video.currentTime >= end
+      ) {
+        video.currentTime =
+          Number(state.storyTrimStart) || 0;
+      }
+    }
+  );
+}
+
+function storySetTrimStart(percent) {
+  const duration =
+    state.storyVideoDuration || 0;
+
+  const end =
+    Number(state.storyTrimEnd) || duration;
+
+  let value =
+    duration * (Number(percent) / 100);
+
+  value =
+    Math.max(
+      0,
+      Math.min(value, end - 0.1)
+    );
+
+  state.storyTrimStart = value;
+
+  const video =
+    document.getElementById(
+      "storyEditorVideo"
+    );
+
+  if (
+    video &&
+    video.currentTime < value
+  ) {
+    video.currentTime = value;
+  }
+
+  storyUpdateTrimLabel();
+}
+
+function storySetTrimEnd(percent) {
+  const duration =
+    state.storyVideoDuration || 0;
+
+  const start =
+    Number(state.storyTrimStart) || 0;
+
+  let value =
+    duration * (Number(percent) / 100);
+
+  value =
+    Math.max(
+      start + 0.1,
+      Math.min(value, duration)
+    );
+
+  state.storyTrimEnd = value;
+
+  const video =
+    document.getElementById(
+      "storyEditorVideo"
+    );
+
+  if (
+    video &&
+    video.currentTime > value
+  ) {
+    video.currentTime = start;
+  }
+
+  storyUpdateTrimLabel();
+}
+
+async function prepareStoryMedia(file) {
+  const {
+    cameraScreen,
+    editorScreen,
+    editorPreview,
+    editorOverlay,
+    editorMediaType,
+    soundButton,
+    trimPanel,
+    error,
+    editorUndo
+  } = getStoryComposerElements();
 
   if (!file) return;
-
-  const error =
-    document.getElementById("createStoryError");
 
   clearError(error);
 
   try {
-    const media = await uploadPostMedia(file);
+    stopStoryCamera();
 
-    state.createStoryMedia = media;
+    if (state.storyMediaUrl) {
+      URL.revokeObjectURL(
+        state.storyMediaUrl
+      );
+    }
 
-    const preview =
-      document.getElementById("storyMediaPreview");
+    state.storyMediaFile = file;
+    state.storyMediaUrl =
+      URL.createObjectURL(file);
 
-    const url = escapeHtml(media.url);
+    state.storyRotation = 0;
+    state.storyFilter = "none";
+    state.storyVideoMuted = false;
+    state.storyVideoDuration = 0;
+    state.storyTrimStart = 0;
+    state.storyTrimEnd = 0;
+    state.storyDrawings = [];
+    state.storyTexts = [];
+    state.storyEditorHistory = [];
 
-    preview.innerHTML =
-      media.media_type === "video"
-        ? renderVYBEVideoPlayer(media, {
-            compact: true
-          })
-        : `<div class="vybe-story-photo-preview">
-             <img src="${url}" alt="Story preview">
-           </div>`;
+    const isVideo =
+      file.type.startsWith("video/");
 
-    preview.classList.remove("hidden");
+    editorPreview.replaceChildren();
+
+    if (isVideo) {
+      const video =
+        document.createElement("video");
+
+      video.id =
+        "storyEditorVideo";
+
+      video.className =
+        "story-editor-media";
+
+      video.src =
+        state.storyMediaUrl;
+
+      video.playsInline = true;
+      video.controls = false;
+      video.muted = false;
+      video.autoplay = false;
+
+      editorPreview.appendChild(video);
+
+      editorMediaType.textContent =
+        "Video";
+
+      soundButton?.classList.remove(
+        "hidden"
+      );
+
+      trimPanel?.classList.remove(
+        "hidden"
+      );
+
+      video.addEventListener(
+        "loadedmetadata",
+        () => {
+          storyPrepareVideoTrim(video);
+        },
+        { once: true }
+      );
+
+      video.addEventListener(
+        "click",
+        () => {
+          if (video.paused) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        }
+      );
+    } else {
+      const image =
+        document.createElement("img");
+
+      image.id =
+        "storyEditorImage";
+
+      image.className =
+        "story-editor-media";
+
+      image.src =
+        state.storyMediaUrl;
+
+      image.alt =
+        "Story preview";
+
+      editorPreview.appendChild(image);
+
+      editorMediaType.textContent =
+        "Photo";
+
+      soundButton?.classList.add(
+        "hidden"
+      );
+
+      trimPanel?.classList.add(
+        "hidden"
+      );
+    }
+
+    editorOverlay.replaceChildren();
+
+    editorUndo.disabled = true;
+
+    cameraScreen?.classList.add(
+      "hidden"
+    );
+
+    editorScreen?.classList.remove(
+      "hidden"
+    );
+
+    storyApplyPreviewTransform();
+
   } catch (errorValue) {
-    state.createStoryMedia = null;
+    console.error(
+      "Could not prepare story media:",
+      errorValue
+    );
 
     showError(
       error,
-      errorValue.message ||
-      "Could not upload story media."
+      "Could not prepare this media."
     );
-  } finally {
-    event.target.value = "";
   }
 }
 
-async function createStory(event) {
-  event.preventDefault();
+function formatStoryTime(seconds) {
+  if (!Number.isFinite(seconds)) {
+    return "00:00";
+  }
 
-  const error =
-    document.getElementById("createStoryError");
+  const total =
+    Math.max(
+      0,
+      Math.round(seconds)
+    );
 
-  const button =
-    document.getElementById("publishStoryButton");
+  const minutes =
+    Math.floor(total / 60);
+
+  const secs =
+    total % 60;
+
+  return (
+    `${String(minutes).padStart(2, "0")}:` +
+    `${String(secs).padStart(2, "0")}`
+  );
+}
+
+async function handleStoryMediaSelection(event) {
+  const input = event.target;
+  const file = input?.files?.[0];
+
+  if (!file) return;
+
+  // Allow selecting the same file again later.
+  input.value = "";
+
+  const validImage = file.type.startsWith("image/");
+  const validVideo = file.type.startsWith("video/");
+
+  if (!validImage && !validVideo) {
+    const { error } = getStoryComposerElements();
+    showError(error, "Please choose a photo or video.");
+    return;
+  }
+
+  await prepareStoryMedia(file);
+}
+
+async function storyBakePhotoEdits() {
+  const image =
+    document.getElementById("storyEditorImage");
+
+  if (!image) return null;
+
+  if (!image.complete) {
+    await new Promise(resolve => {
+      image.addEventListener(
+        "load",
+        resolve,
+        { once: true }
+      );
+    });
+  }
+
+  const width = image.naturalWidth;
+  const height = image.naturalHeight;
+
+  if (!width || !height) {
+    throw new Error("Could not read the image.");
+  }
+
+  const radians =
+    (state.storyRotation % 360) *
+    Math.PI / 180;
+
+  const swap =
+    Math.abs(state.storyRotation % 180) === 90;
+
+  const canvas =
+    document.createElement("canvas");
+
+  canvas.width =
+    swap ? height : width;
+
+  canvas.height =
+    swap ? width : height;
+
+  const ctx =
+    canvas.getContext("2d");
+
+  if (!ctx) {
+    throw new Error("Could not create the image canvas.");
+  }
+
+  /*
+   * Base image + rotation + filter
+   */
+  ctx.save();
+
+  ctx.translate(
+    canvas.width / 2,
+    canvas.height / 2
+  );
+
+  ctx.rotate(radians);
+
+  ctx.filter =
+    storyFilterCss(state.storyFilter);
+
+  ctx.drawImage(
+    image,
+    -width / 2,
+    -height / 2,
+    width,
+    height
+  );
+
+  ctx.restore();
+
+  /*
+   * TEXT
+   *
+   * x/y are normalized coordinates.
+   * scale is preserved from pinch gestures.
+   */
+  if (state.storyTexts?.length) {
+    ctx.save();
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    state.storyTexts.forEach(item => {
+      const scale =
+        Math.max(
+          0.35,
+          Math.min(4, Number(item.scale) || 1)
+        );
+
+      const fontSize =
+        Math.max(
+          24,
+          Math.round(canvas.width * 0.065)
+        ) * scale;
+
+      ctx.font =
+        `700 ${fontSize}px sans-serif`;
+
+      ctx.fillStyle =
+        item.color || "#ffffff";
+
+      ctx.shadowColor =
+        "rgba(0,0,0,.65)";
+
+      ctx.shadowBlur = 8;
+
+      ctx.fillText(
+        item.text || "",
+        canvas.width * (item.x ?? 0.5),
+        canvas.height * (item.y ?? 0.5)
+      );
+    });
+
+    ctx.restore();
+  }
+
+  /*
+   * EMOJI
+   *
+   * Emoji use the same normalized x/y
+   * coordinates and preserve pinch scale.
+   */
+  if (state.storyEmojis?.length) {
+    ctx.save();
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    state.storyEmojis.forEach(item => {
+      const scale =
+        Math.max(
+          0.35,
+          Math.min(4, Number(item.scale) || 1)
+        );
+
+      const fontSize =
+        Math.max(
+          40,
+          Math.round(canvas.width * 0.12)
+        ) * scale;
+
+      ctx.font =
+        `${fontSize}px "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+
+      ctx.shadowColor =
+        "rgba(0,0,0,.35)";
+
+      ctx.shadowBlur = 5;
+
+      ctx.fillText(
+        item.emoji || "",
+        canvas.width * (item.x ?? 0.5),
+        canvas.height * (item.y ?? 0.5)
+      );
+    });
+
+    ctx.restore();
+  }
+
+  /*
+   * DRAWING
+   */
+  if (state.storyDrawings?.length) {
+    ctx.save();
+
+    state.storyDrawings.forEach(item => {
+      ctx.beginPath();
+
+      ctx.arc(
+        canvas.width * item.x,
+        canvas.height * item.y,
+        Math.max(
+          5,
+          canvas.width * 0.012
+        ),
+        0,
+        Math.PI * 2
+      );
+
+      ctx.fillStyle =
+        item.color || "#ffffff";
+
+      ctx.fill();
+    });
+
+    ctx.restore();
+  }
+
+  const blob =
+    await new Promise(resolve =>
+      canvas.toBlob(
+        resolve,
+        "image/jpeg",
+        0.94
+      )
+    );
+
+  if (!blob) {
+    throw new Error("Could not create the edited image.");
+  }
+
+  const newFile =
+    new File(
+      [blob],
+      `story-edited-${Date.now()}.jpg`,
+      {
+        type: "image/jpeg"
+      }
+    );
+
+  if (state.storyMediaUrl) {
+    URL.revokeObjectURL(
+      state.storyMediaUrl
+    );
+  }
+
+  state.storyMediaFile =
+    newFile;
+
+  state.storyMediaUrl =
+    URL.createObjectURL(newFile);
+
+  state.storyEditsBaked = true;
+
+  return newFile;
+}
+
+function openStoryShareScreen() {
+  const {
+    editorScreen,
+    shareScreen,
+    shareError
+  } = getStoryComposerElements();
+
+  clearError(shareError);
+
+  editorScreen?.classList.add("hidden");
+  shareScreen?.classList.remove("hidden");
+
+  renderStoryShareState();
+}
+
+function backFromStoryShare() {
+  const {
+    shareScreen,
+    sharePeoplePanel,
+    editorScreen
+  } = getStoryComposerElements();
+
+  sharePeoplePanel?.classList.add("hidden");
+  shareScreen?.classList.add("hidden");
+  editorScreen?.classList.remove("hidden");
+}
+
+function closeStoryShare() {
+  closeCreateStory();
+}
+
+function storyShareSetAudience(audience) {
+  const allowed = [
+    "everyone",
+    "contacts",
+    "close_friends",
+    "selected_users"
+  ];
+
+  if (!allowed.includes(audience)) {
+    audience = "everyone";
+  }
+
+  state.storyShareAudience = audience;
+  renderStoryShareState();
+}
+
+function renderStoryShareState() {
+  const {
+    shareScreen,
+    shareAllowScreenshots
+  } = getStoryComposerElements();
+
+  if (!shareScreen) return;
+
+  shareScreen.querySelectorAll("[data-story-audience]").forEach(button => {
+    const active =
+      button.dataset.storyAudience === state.storyShareAudience;
+
+    button.classList.toggle("active", active);
+
+    const radio = button.querySelector(".story-share-radio");
+    if (radio) {
+      radio.textContent = active ? "●" : "○";
+    }
+  });
+
+  shareScreen.querySelectorAll("[data-story-share-people]").forEach(button => {
+    const mode = button.dataset.storySharePeople;
+
+    if (
+      mode === "exclude" ||
+      mode === "selected" ||
+      mode === "close_friends"
+    ) {
+      const count =
+        mode === "exclude"
+          ? state.storyShareExcludedIds.length
+          : state.storyShareSelectedIds.length;
+
+      const countEl = button.querySelector(".story-share-count");
+
+      if (countEl) {
+        countEl.textContent =
+          count ? `${count} selected` : "edit list ›";
+      }
+    }
+  });
+
+  if (shareAllowScreenshots) {
+    shareAllowScreenshots.checked =
+      state.storyShareAllowScreenshots !== false;
+  }
+}
+
+function storyShareOpenPeople(mode) {
+  const {
+    sharePeoplePanel,
+    sharePeopleSearch
+  } = getStoryComposerElements();
+
+  state.storySharePeopleMode = mode;
+
+  sharePeoplePanel?.classList.remove("hidden");
+
+  if (sharePeopleSearch) {
+    sharePeopleSearch.value = "";
+    sharePeopleSearch.focus();
+  }
+
+  storyShareSearchPeople("");
+}
+
+function storyShareClosePeople() {
+  const { sharePeoplePanel } = getStoryComposerElements();
+
+  state.storySharePeopleMode = null;
+  sharePeoplePanel?.classList.add("hidden");
+}
+
+async function storyShareSearchPeople(query) {
+  const {
+    sharePeopleList,
+    sharePeopleSearch
+  } = getStoryComposerElements();
+
+  if (!sharePeopleList) return;
+
+  const q = String(query || "").trim();
+
+  if (!q) {
+    sharePeopleList.innerHTML =
+      `<div class="story-share-empty">Search people by username or name.</div>`;
+    return;
+  }
+
+  sharePeopleList.innerHTML =
+    `<div class="story-share-loading">Searching…</div>`;
+
+  try {
+    const result = await api(
+      `/api/search/users?q=${encodeURIComponent(q)}`
+    );
+
+    state.storySharePeople = Array.isArray(result?.users)
+      ? result.users
+      : [];
+
+    renderStorySharePeople();
+  } catch (errorValue) {
+    console.error("Story people search error:", errorValue);
+
+    sharePeopleList.innerHTML =
+      `<div class="story-share-empty">Could not search people.</div>`;
+  }
+}
+
+function renderStorySharePeople() {
+  const {
+    sharePeopleList
+  } = getStoryComposerElements();
+
+  if (!sharePeopleList) return;
+
+  if (!state.storySharePeople.length) {
+    sharePeopleList.innerHTML =
+      `<div class="story-share-empty">No people found.</div>`;
+    return;
+  }
+
+  const mode = state.storySharePeopleMode;
+
+  const selectedIds =
+    mode === "exclude"
+      ? state.storyShareExcludedIds
+      : state.storyShareSelectedIds;
+
+  sharePeopleList.innerHTML = "";
+
+  state.storySharePeople.forEach(user => {
+    if (!user?.id) return;
+
+    if (
+      state.user?.id &&
+      String(user.id) === String(state.user.id)
+    ) {
+      return;
+    }
+
+    const selected =
+      selectedIds.some(id => String(id) === String(user.id));
+
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.className =
+      `story-share-person ${selected ? "selected" : ""}`;
+
+    button.dataset.userId = user.id;
+
+    button.innerHTML = `
+      <span class="story-share-person-avatar">
+        ${
+          user.avatar_url
+            ? `<img src="${escapeHtml(user.avatar_url)}" alt="">`
+            : "👤"
+        }
+      </span>
+      <span class="story-share-person-info">
+        <strong>${escapeHtml(user.display_name || user.username || "User")}</strong>
+        <small>@${escapeHtml(user.username || "")}</small>
+      </span>
+      <span class="story-share-person-check">
+        ${selected ? "✓" : ""}
+      </span>
+    `;
+
+    button.addEventListener("click", () => {
+      storyShareTogglePerson(user.id);
+    });
+
+    sharePeopleList.appendChild(button);
+  });
+}
+
+function storyShareTogglePerson(userId) {
+  const mode = state.storySharePeopleMode;
+
+  if (!userId) return;
+
+  const target =
+    mode === "exclude"
+      ? state.storyShareExcludedIds
+      : state.storyShareSelectedIds;
+
+  const index =
+    target.findIndex(
+      id => String(id) === String(userId)
+    );
+
+  if (index >= 0) {
+    target.splice(index, 1);
+  } else {
+    target.push(userId);
+  }
+
+  renderStorySharePeople();
+  renderStoryShareState();
+}
+
+function storySharePeopleDone() {
+  storyShareClosePeople();
+  renderStoryShareState();
+}
+
+function validateStoryShare() {
+  const audience = state.storyShareAudience;
+
+  if (
+    (audience === "selected_users" ||
+     audience === "close_friends") &&
+    !state.storyShareSelectedIds.length
+  ) {
+    return "Select at least one person who can view this story.";
+  }
+
+  return "";
+}
+
+function returnStoryToCamera() {
+  const {
+    cameraScreen,
+    editorScreen,
+    editorPreview,
+    editorOverlay,
+    trimPanel,
+    filterBar,
+    cropBar,
+    drawBar,
+    textBar,
+    shareScreen
+  } = getStoryComposerElements();
+
+  if (state.storyMediaUrl) {
+    URL.revokeObjectURL(state.storyMediaUrl);
+  }
+
+  state.storyMediaUrl = null;
+  state.storyMediaFile = null;
+  state.createStoryMedia = null;
+
+  editorPreview?.replaceChildren();
+  editorOverlay?.replaceChildren();
+
+  trimPanel?.classList.add("hidden");
+  filterBar?.classList.add("hidden");
+  cropBar?.classList.add("hidden");
+  drawBar?.classList.add("hidden");
+  textBar?.classList.add("hidden");
+  shareScreen?.classList.add("hidden");
+
+  editorScreen?.classList.add("hidden");
+  cameraScreen?.classList.remove("hidden");
+
+  startStoryCamera();
+}
+
+function storyGalleryPick() {
+  const {
+    mediaInput
+  } = getStoryComposerElements();
+
+  if (!mediaInput) return;
+
+  mediaInput.removeAttribute("capture");
+  mediaInput.click();
+}
+
+async function switchStoryCamera() {
+  if (state.storyRecording) return;
+
+  state.storyCameraFacing =
+    state.storyCameraFacing === "environment"
+      ? "user"
+      : "environment";
+
+  await startStoryCamera();
+}
+
+function storyGalleryPick() {
+  const {
+    mediaInput
+  } = getStoryComposerElements();
+
+  if (!mediaInput) return;
+
+  mediaInput.removeAttribute(
+    "capture"
+  );
+
+  mediaInput.click();
+}
+
+async function switchStoryCamera() {
+  if (state.storyRecording) return;
+
+  state.storyCameraFacing =
+    state.storyCameraFacing ===
+    "environment"
+      ? "user"
+      : "environment";
+
+  await startStoryCamera();
+}
+
+
+function openStoryFinalPreview() {
+  return finalizeStoryEditor();
+}
+
+function backFromStoryFinalPreview() {
+  const {
+    finalScreen,
+    editorScreen
+  } = getStoryComposerElements();
+
+  finalScreen?.classList.add("hidden");
+  editorScreen?.classList.remove("hidden");
+
+  state.storyFinalPreviewReady = false;
+
+  renderStoryEditorOverlay();
+}
+
+function closeStoryFinalPreview() {
+  closeCreateStory();
+}
+
+
+async function createStory() {
+  const {
+    caption,
+    error,
+    shareError,
+    sharePostButton
+  } = getStoryComposerElements();
 
   clearError(error);
+  clearError(shareError);
 
-  if (!state.createStoryMedia?.id) {
+  if (!state.storyMediaFile) {
     showError(
-      error,
-      "Choose a photo or video first."
+      shareError || error,
+      "Choose or capture a photo/video first."
     );
     return;
   }
 
-  const caption =
-    document.getElementById("storyCaption")
-      .value.trim();
+  const shareValidation = validateStoryShare();
 
-  setButtonLoading(button, true);
+  if (shareValidation) {
+    showError(
+      shareError || error,
+      shareValidation
+    );
+    return;
+  }
+
+  setButtonLoading(
+    sharePostButton,
+    true,
+    "POST STORY"
+  );
 
   try {
-    await api("/api/stories", {
-      method: "POST",
-      body: JSON.stringify({
-        media_id: state.createStoryMedia.id,
-        caption
-      })
-    });
+    /*
+     * IMPORTANT:
+     * Media is uploaded ONLY here, after
+     * the user presses POST STORY.
+     *
+     * Photo edits are baked immediately
+     * before upload.
+     */
+    const isVideo =
+      state.storyMediaFile.type?.startsWith("video/");
 
-    state.createStoryMedia = null;
+    if (!isVideo && !state.storyEditsBaked) {
+      await storyBakePhotoEdits();
+    }
+
+    const media =
+      await uploadPostMedia(
+        state.storyMediaFile
+      );
+
+    state.createStoryMedia = media;
+
+    const finalText =
+      caption?.value.trim() || "";
+
+    await api(
+      "/api/stories",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          media_id: media.id,
+          caption: finalText,
+          audience: state.storyShareAudience,
+          excluded_user_ids: state.storyShareExcludedIds,
+          selected_user_ids: state.storyShareSelectedIds,
+          allow_screenshots:
+            state.storyShareAllowScreenshots !== false
+        })
+      }
+    );
 
     closeCreateStory();
+
     await loadStories();
+
   } catch (errorValue) {
+    console.error(
+      "Story publish error:",
+      errorValue
+    );
+
     showError(
-      error,
+      shareError || error,
       errorValue.message ||
       "Could not share story."
     );
+
   } finally {
     setButtonLoading(
-      button,
+      sharePostButton,
       false,
-      "Share Story"
+      "POST STORY"
     );
   }
 }
 
+
 function openStoryByUser(userId) {
   const index = state.stories.findIndex(
-    story => story.user_id === userId
+    story =>
+      String(story.user_id) === String(userId)
   );
 
   if (index < 0) return;
@@ -5010,29 +7022,301 @@ if (state.authenticated) {
   const reactionPicker = document.getElementById("storyReactionPicker");
   const deleteButton = document.getElementById("storyDeleteButton");
 
+  /* Story camera / composer V2 */
+
+  document
+    .querySelectorAll("[data-story-mode]")
+    .forEach(button => {
+      button.addEventListener("click", async () => {
+        await setStoryMode(
+          button.dataset.storyMode
+        );
+      });
+    });
+
+  document
+    .getElementById("storyGalleryButton")
+    ?.addEventListener(
+      "click",
+      storyGalleryPick
+    );
+
+  document
+    .getElementById("storyCaptureButton")
+    ?.addEventListener("click", () => {
+      if (state.storyCameraMode === "video") {
+        captureStoryVideo();
+      } else {
+        captureStoryPhoto();
+      }
+    });
+
+  document
+    .getElementById("storySwitchCamera")
+    ?.addEventListener(
+      "click",
+      switchStoryCamera
+    );
+
+  document
+    .getElementById("storyMediaInput")
+    ?.addEventListener(
+      "change",
+      handleStoryMediaSelection
+    );
+
+  /* Editor: back */
+  document
+    .getElementById("storyEditorBack")
+    ?.addEventListener(
+      "click",
+      returnStoryToCamera
+    );
+
+  /* Editor: Next */
+  document
+    .getElementById("storyEditorNextButton")
+    ?.addEventListener(
+      "click",
+      openStoryFinalPreview
+    );
+
+  /* Back from Final Preview */
+  document
+    .getElementById("storyFinalBack")
+    ?.addEventListener(
+      "click",
+      backFromStoryFinalPreview
+    );
+
+  /* Close Final Preview */
+  document
+    .getElementById("storyFinalClose")
+    ?.addEventListener(
+      "click",
+      closeStoryFinalPreview
+    );
+
+  /* Final Post */
+  document
+    .getElementById("storyFinalPostButton")
+    ?.addEventListener(
+      "click",
+      createStory
+    );
+
+  /*
+   * Keep the old Done button harmless.
+   * If it still exists in the legacy editor,
+   * it follows the same Final Preview flow.
+   */
+  document
+    .getElementById("storyEditorDone")
+    ?.addEventListener(
+      "click",
+      openStoryFinalPreview
+    );
+
+  /* Editor: Undo */
+  document
+    .getElementById("storyEditorUndo")
+    ?.addEventListener(
+      "click",
+      storyUndo
+    );
+
+  /* Editor: tool strip */
+  document
+    .querySelectorAll("[data-story-tool]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        storyOpenTool(
+          button.dataset.storyTool
+        );
+      });
+    });
+
+  /* Filters */
+  document
+    .querySelectorAll("[data-story-filter]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        const filter =
+          button.dataset.storyFilter;
+
+        document
+          .querySelectorAll("[data-story-filter]")
+          .forEach(item => {
+            item.classList.toggle(
+              "active",
+              item === button
+            );
+          });
+
+        storySetFilter(filter);
+      });
+    });
+
+  /* Crop ratios */
+  document
+    .querySelectorAll("[data-story-ratio]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        state.storyCropRatio =
+          button.dataset.storyRatio ||
+          "free";
+
+        document
+          .querySelectorAll("[data-story-ratio]")
+          .forEach(item => {
+            item.classList.toggle(
+              "active",
+              item === button
+            );
+          });
+
+        // Instant Telegram-style crop preview.
+        storyPreviewCropRatio(
+          state.storyCropRatio
+        );
+      });
+    });
+
+  document
+    .getElementById("storyCropApply")
+    ?.addEventListener(
+      "click",
+      storyApplyCrop
+    );
+
+  /* Draw colors */
+  document
+    .querySelectorAll("[data-draw-color]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        state.storyTextColor =
+          button.dataset.drawColor ||
+          "#ffffff";
+
+        document
+          .querySelectorAll("[data-draw-color]")
+          .forEach(item => {
+            item.classList.toggle(
+              "active",
+              item === button
+            );
+          });
+      });
+    });
+
+  document
+    .getElementById("storyDrawClose")
+    ?.addEventListener(
+      "click",
+      storyStopDrawing
+    );
+
+  /* Text */
+  document
+    .getElementById("storyEditorTextButton")
+    ?.addEventListener(
+      "click",
+      storyOpenTextEditor
+    );
+
+  document
+    .getElementById("storyTextDone")
+    ?.addEventListener(
+      "click",
+      storyFinishText
+    );
+
+  document
+    .getElementById("storyTextColor")
+    ?.addEventListener("click", () => {
+      const colors = [
+        "#ffffff",
+        "#ff3b5c",
+        "#ffd60a",
+        "#30d158",
+        "#0a84ff"
+      ];
+
+      const current =
+        colors.indexOf(
+          state.storyTextColor
+        );
+
+      state.storyTextColor =
+        colors[
+          (current + 1) % colors.length
+        ];
+
+      const button =
+        document.getElementById(
+          "storyTextColor"
+        );
+
+      if (button) {
+        button.style.color =
+          state.storyTextColor;
+      }
+    });
+
+  /* Video trim */
+  document
+    .getElementById("storyTrimStart")
+    ?.addEventListener("input", event => {
+      storySetTrimStart(
+        event.target.value
+      );
+    });
+
+  document
+    .getElementById("storyTrimEnd")
+    ?.addEventListener("input", event => {
+      storySetTrimEnd(
+        event.target.value
+      );
+    });
+
+  /* Video sound */
+  document
+    .getElementById("storySoundButton")
+    ?.addEventListener(
+      "click",
+      storyToggleSound
+    );
+
   addStoryButton?.addEventListener("click", openCreateStory);
 
   document.getElementById("topCreateButton")?.addEventListener("click", () => {
     openCreatePost();
   });
   closeButton?.addEventListener("click", closeCreateStory);
-  form?.addEventListener("submit", createStory);
-  input?.addEventListener("change", handleStoryMediaSelection);
+  form?.addEventListener("submit", event => event.preventDefault());
   closeViewer?.addEventListener("click", closeStoryViewer);
 
   left?.addEventListener("click", showPreviousStory);
   right?.addEventListener("click", showNextStory);
 
   feed?.addEventListener("click", event => {
+    const addStoryTarget =
+      event.target.closest(
+        "#emptyAddStory, .story-own-plus"
+      );
+
+    if (addStoryTarget) {
+      event.preventDefault();
+      event.stopPropagation();
+      openCreateStory();
+      return;
+    }
     const card = event.target.closest("[data-story-user]");
 
     if (card) {
       openStoryByUser(card.dataset.storyUser);
       return;
-    }
-
-    if (event.target.closest("#emptyAddStory")) {
-      openCreateStory();
     }
   });
 
@@ -5139,7 +7423,8 @@ if (state.authenticated) {
   deleteButton?.addEventListener("click", async event => {
     event.stopPropagation();
 
-    const story = state.stories[state.activeStoryIndex];
+    const index = state.activeStoryIndex;
+    const story = state.stories[index];
 
     if (
       !story ||
@@ -5150,15 +7435,36 @@ if (state.authenticated) {
 
     if (!confirm("Delete this story?")) return;
 
+    // Remove it from the UI immediately.
+    // The server request continues in the background.
+    const previousStories = [...state.stories];
+    const previousIndex = index;
+
+    state.stories = state.stories.filter(
+      (_, storyIndex) => storyIndex !== index
+    );
+
+    state.activeStoryIndex = -1;
+
+    clearStoryTimer();
+    renderStories();
+    closeStoryViewer();
+
     try {
       await api(`/api/stories/${story.id}`, {
         method: "DELETE"
       });
-
-      closeStoryViewer();
-      await loadStories();
     } catch (error) {
-      alert(error.message || "Could not delete story");
+      // Restore the story if the server deletion failed.
+      state.stories = previousStories;
+      state.activeStoryIndex = previousIndex;
+
+      renderStories();
+
+      alert(
+        error.message ||
+        "Could not delete story"
+      );
     }
   });
 
@@ -6493,6 +8799,25 @@ let activeDMConversation = null;
 let dmConversations = [];
 let dmSocket = null;
 
+function cleanupDMView() {
+  const screen = document.getElementById("dmScreen");
+
+  if (activeDMConversation && dmSocket?.connected) {
+    dmSocket.emit(
+      "leave_conversation",
+      activeDMConversation
+    );
+  }
+
+  activeDMConversation = null;
+
+  if (screen) {
+    screen.classList.remove("dm-chat-mode");
+    screen.classList.add("hidden");
+    screen.replaceChildren();
+  }
+}
+
 function initDMSocket() {
   if (dmSocket || typeof window.io !== "function") return;
   if (!state.user?.id) return;
@@ -7273,6 +9598,8 @@ function showDM() {
     document.body.appendChild(screen);
   }
 
+  screen.classList.remove("dm-chat-mode");
+  screen.replaceChildren();
   screen.classList.remove("hidden");
   setActiveNav("dm");
 
@@ -7321,3 +9648,15 @@ document
     });
   });
 })();
+
+
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-story-emoji]");
+
+  if (!button) return;
+
+  storyAddEmoji(
+    button.dataset.storyEmoji
+  );
+});
+
