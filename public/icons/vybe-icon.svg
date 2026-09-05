@@ -1,29 +1,125 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 512 512"
+  role="img"
+  aria-label="VYBE"
+>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#050505"/>
-      <stop offset="1" stop-color="#15121d"/>
+    <linearGradient
+      id="vybeGradient"
+      x1="90"
+      y1="80"
+      x2="430"
+      y2="430"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop offset="0" stop-color="#ff3b91"/>
+      <stop offset="0.48" stop-color="#9b3cff"/>
+      <stop offset="1" stop-color="#20d9ff"/>
     </linearGradient>
-    <linearGradient id="v" x1="120" y1="90" x2="410" y2="430">
-      <stop offset="0" stop-color="#7c3aed"/>
-      <stop offset="0.52" stop-color="#ec4899"/>
-      <stop offset="1" stop-color="#f97316"/>
+
+    <filter
+      id="glow"
+      x="-50%"
+      y="-50%"
+      width="200%"
+      height="200%"
+    >
+      <feGaussianBlur
+        stdDeviation="14"
+        result="blur"
+      />
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <linearGradient
+      id="bgGradient"
+      x1="0"
+      y1="0"
+      x2="512"
+      y2="512"
+    >
+      <stop offset="0" stop-color="#111111"/>
+      <stop offset="1" stop-color="#030303"/>
     </linearGradient>
   </defs>
 
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-
-  <path
-    d="M118 126
-       L198 126
-       L256 314
-       L314 126
-       L394 126
-       L294 386
-       Q286 408 256 408
-       Q226 408 218 386 Z"
-    fill="url(#v)"
+  <!-- App background -->
+  <rect
+    width="512"
+    height="512"
+    rx="112"
+    fill="url(#bgGradient)"
   />
 
-  <circle cx="390" cy="112" r="18" fill="#fff" opacity=".9"/>
+  <!-- Soft ambient glow -->
+  <path
+    d="M155 125
+       C112 125 92 168 111 204
+       L208 382
+       C219 402 246 402 257 382
+       L401 132
+       C414 109 397 82 371 82
+       C356 82 345 90 337 104
+       L232 287
+       L185 201
+       C178 187 164 177 148 177
+       C128 177 115 193 115 211
+       C115 220 118 228 123 237
+       L197 370
+       L133 251
+       C116 220 100 192 100 167
+       C100 143 121 125 155 125Z"
+    fill="url(#vybeGradient)"
+    opacity="0.22"
+    filter="url(#glow)"
+  />
+
+  <!-- Main V / connection mark -->
+  <path
+    d="M150 105
+       C124 105 106 124 106 148
+       C106 157 109 166 114 175
+       L207 351
+       C216 368 231 378 249 378
+       C267 378 282 368 292 351
+       L406 151
+       C419 128 402 100 376 100
+       C361 100 348 108 340 122
+       L249 282
+       L177 142
+       C172 132 163 125 153 125
+       C151 125 149 125 147 126
+       C139 117 132 105 150 105Z"
+    fill="url(#vybeGradient)"
+    filter="url(#glow)"
+  />
+
+  <!-- Inner connection cut -->
+  <path
+    d="M214 163
+       L249 232
+       L296 150"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="10"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    opacity="0.18"
+  />
+
+  <!-- Highlight -->
+  <path
+    d="M143 139
+       C137 149 139 160 145 171
+       L216 305"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="9"
+    stroke-linecap="round"
+    opacity="0.32"
+  />
 </svg>

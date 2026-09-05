@@ -1,11 +1,14 @@
-const CACHE_NAME = "vybe-shell-v1";
+const CACHE_NAME = "vybe-shell-v2";
 
 const APP_SHELL = [
   "/",
   "/index.html",
   "/css/style.css?v=2",
   "/js/app.js?v=3",
-  "/manifest.webmanifest"
+  "/manifest.webmanifest",
+  "/icons/vybe-icon.svg",
+  "/icons/vybe-192.png",
+  "/icons/vybe-512.png"
 ];
 
 self.addEventListener("install", event => {
