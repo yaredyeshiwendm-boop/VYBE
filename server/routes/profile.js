@@ -3,6 +3,11 @@ const express = require("express");
 const { query } = require("../../db");
 const { requireAuth, optionalAuth } = require("../middleware/auth");
 const { createNotification } = require("../services/notifications");
+const { put, del } = require("@vercel/blob");
+const {
+  upload,
+  validateUploadedFile
+} = require("../middleware/upload");
 
 const router = express.Router();
 
@@ -66,6 +71,131 @@ router.get("/me", requireAuth, async (req, res) => {
     });
   }
 });
+
+/*
+ * POST /api/profile/avatar
+ * Upload/change current user's profile avatar
+ */
+router.post(
+  "/avatar",
+  requireAuth,
+  upload.single("file"),
+  async (req, res) => {
+    let uploadedBlobUrl = null;
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: "Avatar file is required"
+        });
+      }
+
+      const metadata = validateUploadedFile(req.file);
+
+      if (metadata.type !== "image") {
+        return res.status(400).json({
+          success: false,
+          error: "Avatar must be an image"
+        });
+      }
+
+      const filename =
+        require("crypto")
+          .randomBytes(24)
+          .toString("hex") +
+        metadata.extension;
+
+      const blob = await put(
+        `avatars/${filename}`,
+        req.file.buffer,
+        {
+          access: "public",
+          contentType: metadata.mimeType,
+          addRandomSuffix: false
+        }
+      );
+
+      uploadedBlobUrl = blob.url;
+
+      const current = await query(
+        `SELECT avatar_url
+         FROM users
+         WHERE id = $1`,
+        [req.user.id]
+      );
+
+      if (current.rows.length === 0) {
+        await del(blob.url).catch(() => {});
+        return res.status(404).json({
+          success: false,
+          error: "Profile not found"
+        });
+      }
+
+      const oldAvatarUrl = current.rows[0].avatar_url;
+
+      const result = await query(
+        `UPDATE users
+         SET avatar_url = $1,
+             updated_at = NOW()
+         WHERE id = $2
+         RETURNING
+           id,
+           username,
+           email,
+           display_name,
+           bio,
+           avatar_url,
+           is_verified,
+           created_at`,
+        [blob.url, req.user.id]
+      );
+
+      if (
+        oldAvatarUrl &&
+        oldAvatarUrl !== blob.url
+      ) {
+        try {
+          await del(oldAvatarUrl);
+        } catch (deleteError) {
+          console.error(
+            "Old avatar cleanup error:",
+            deleteError
+          );
+        }
+      }
+
+      res.status(201).json({
+        success: true,
+        profile: result.rows[0]
+      });
+    } catch (error) {
+      if (uploadedBlobUrl) {
+        try {
+          await del(uploadedBlobUrl);
+        } catch (deleteError) {
+          console.error(
+            "New avatar cleanup error:",
+            deleteError
+          );
+        }
+      }
+
+      console.error(
+        "Profile avatar upload error:",
+        error
+      );
+
+      res.status(400).json({
+        success: false,
+        error:
+          error.message ||
+          "Could not upload avatar"
+      });
+    }
+  }
+);
 
 /*
  * PUT /api/profile/me

@@ -451,11 +451,20 @@ function renderProfile() {
     state.user.following_count || 0
   );
 
-  document.getElementById(
-    "profileAvatar"
-  ).textContent = name
-    .charAt(0)
-    .toUpperCase();
+  const avatar =
+    document.getElementById("profileAvatar");
+
+  if (state.user.avatar_url) {
+    avatar.innerHTML = `
+      <img
+        src="${escapeHtml(state.user.avatar_url)}"
+        alt="${escapeHtml(name)}"
+      >
+    `;
+  } else {
+    avatar.textContent =
+      name.charAt(0).toUpperCase();
+  }
 }
 
 function showProfile() {
@@ -480,6 +489,74 @@ function hideProfile() {
   showHome();
 }
 
+function renderEditProfileAvatar() {
+  const preview = document.getElementById(
+    "editProfileAvatarPreview"
+  );
+
+  if (!preview) return;
+
+  const name =
+    state.user?.display_name ||
+    state.user?.username ||
+    "VYBER";
+
+  if (state.user?.avatar_url) {
+    preview.innerHTML = `
+      <img
+        src="${escapeHtml(state.user.avatar_url)}"
+        alt="${escapeHtml(name)}"
+      >
+    `;
+  } else {
+    preview.textContent =
+      name.charAt(0).toUpperCase();
+  }
+}
+
+async function uploadProfileAvatar(file) {
+  if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error(
+      "Avatar image must be 10MB or smaller."
+    );
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    "/api/profile/avatar",
+    {
+      method: "POST",
+      credentials: "include",
+      body: formData
+    }
+  );
+
+  let data = {};
+
+  try {
+    data = await response.json();
+  } catch {}
+
+  if (!response.ok || !data.success) {
+    throw new Error(
+      data.error ||
+      "Could not upload avatar."
+    );
+  }
+
+  state.user = {
+    ...state.user,
+    ...data.profile
+  };
+
+  renderProfile();
+  renderEditProfileAvatar();
+}
+
 function openEditProfile() {
   if (!state.user) return;
 
@@ -495,15 +572,19 @@ function openEditProfile() {
     "editBio"
   ).value = state.user.bio || "";
 
+  renderEditProfileAvatar();
+
   clearError(
     document.getElementById("editProfileError")
   );
 
+  hide(bottomNav);
   show(editProfileModal);
 }
 
 function closeEditProfile() {
   hide(editProfileModal);
+  show(bottomNav);
 }
 
 async function saveProfile(event) {
@@ -614,6 +695,32 @@ document
 document
   .querySelector(".modal-backdrop")
   .addEventListener("click", closeEditProfile);
+
+document
+  .getElementById("editProfileAvatarInput")
+  .addEventListener("change", async event => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    const errorElement =
+      document.getElementById(
+        "editProfileError"
+      );
+
+    try {
+      clearError(errorElement);
+      await uploadProfileAvatar(file);
+    } catch (error) {
+      showError(
+        errorElement,
+        error.message ||
+          "Could not upload avatar."
+      );
+    } finally {
+      event.target.value = "";
+    }
+  });
 
 document
   .getElementById("editProfileForm")
@@ -1035,8 +1142,20 @@ function renderPublicProfile(profile) {
   document.getElementById("publicProfileBio").textContent =
     profile.bio || "";
 
-  document.getElementById("publicProfileAvatar").textContent =
-    name.charAt(0).toUpperCase();
+  const avatar =
+    document.getElementById("publicProfileAvatar");
+
+  if (profile.avatar_url) {
+    avatar.innerHTML = `
+      <img
+        src="${escapeHtml(profile.avatar_url)}"
+        alt="${escapeHtml(name)}"
+      >
+    `;
+  } else {
+    avatar.textContent =
+      name.charAt(0).toUpperCase();
+  }
 
   document.getElementById("publicProfilePostsCount").textContent =
     Number(profile.posts_count || 0);

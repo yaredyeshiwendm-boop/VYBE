@@ -356,48 +356,100 @@
 
           <form id="editProfileForm">
 
-            <label>
-              Display name
-              <input
-                id="editDisplayName"
-                type="text"
-                maxlength="80"
-                required
-              >
-            </label>
+            <div class="edit-profile-hero">
+              <div class="edit-profile-avatar-wrap">
+                <div
+                  id="editProfileAvatarPreview"
+                  class="profile-avatar edit-profile-avatar"
+                >
+                  V
+                </div>
 
-            <label>
-              Username
-              <input
-                id="editUsername"
-                type="text"
-                maxlength="30"
-                required
-              >
-            </label>
+                <label
+                  for="editProfileAvatarInput"
+                  class="edit-profile-camera"
+                  aria-label="Change profile photo"
+                  title="Change profile photo"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M4 7.5h3l1.4-2h5.2l1.4 2H20a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"
+                    />
+                    <circle cx="12" cy="13.5" r="3.5"/>
+                  </svg>
+                </label>
 
-            <label>
-              Bio
-              <textarea
-                id="editBio"
-                maxlength="160"
-                rows="4"
-                placeholder="Tell people about yourself..."
-              ></textarea>
-            </label>
+                <input
+                  id="editProfileAvatarInput"
+                  type="file"
+                  accept="image/*"
+                  hidden
+                >
+              </div>
+
+              <strong id="editProfilePhotoTitle">
+                Profile Photo
+              </strong>
+
+              <span>
+                Make your profile yours.
+              </span>
+            </div>
+
+            <div class="edit-profile-fields">
+
+              <label class="edit-profile-field">
+                <span>Display name</span>
+                <input
+                  id="editDisplayName"
+                  type="text"
+                  maxlength="80"
+                  required
+                  autocomplete="name"
+                >
+              </label>
+
+              <label class="edit-profile-field">
+                <span>Username</span>
+                <input
+                  id="editUsername"
+                  type="text"
+                  maxlength="30"
+                  required
+                  autocomplete="username"
+                >
+              </label>
+
+              <label class="edit-profile-field">
+                <span>Bio</span>
+                <textarea
+                  id="editBio"
+                  maxlength="160"
+                  rows="4"
+                  placeholder="Tell people about yourself..."
+                ></textarea>
+              </label>
+
+            </div>
 
             <div id="editProfileError" class="form-error hidden"></div>
 
+          </form>
+
+          <div class="edit-profile-footer">
             <button
               id="saveProfileButton"
               class="primary-button"
               type="submit"
+              form="editProfileForm"
             >
               <span class="button-text">Save Changes</span>
               <span class="button-loader hidden">Saving...</span>
             </button>
-
-          </form>
+          </div>
 
           <button
             id="logoutButton"

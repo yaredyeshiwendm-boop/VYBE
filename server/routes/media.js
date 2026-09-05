@@ -1,5 +1,5 @@
 const express = require("express");
-const fs = require("fs");
+const { del } = require("@vercel/blob");
 
 const { query } = require("../../db");
 const { requireAuth } = require("../middleware/auth");
@@ -21,7 +21,7 @@ router.post(
     try {
       const metadata = validateUploadedFile(req.file);
 
-      savedFile = saveUploadedFile(
+      savedFile = await saveUploadedFile(
         req.file,
         metadata
       );
@@ -57,11 +57,6 @@ router.post(
         media: result.rows[0]
       });
     } catch (error) {
-      if (savedFile?.absolutePath) {
-        try {
-          fs.unlinkSync(savedFile.absolutePath);
-        } catch {}
-      }
 
       console.error("Media upload error:", error);
 
@@ -115,25 +110,11 @@ router.delete("/:id", requireAuth, async (req, res) => {
 
     const url = result.rows[0].url;
 
-    if (url?.startsWith("/uploads/media/")) {
-      const filename =
-        url.slice("/uploads/media/".length);
-
-      if (
-        filename &&
-        !filename.includes("/") &&
-        !filename.includes("\\")
-      ) {
-        const absolutePath =
-          require("path").join(
-            __dirname,
-            "../../uploads/media",
-            filename
-          );
-
-        try {
-          fs.unlinkSync(absolutePath);
-        } catch {}
+    if (url) {
+      try {
+        await del(url);
+      } catch (deleteError) {
+        console.error("Blob delete error:", deleteError);
       }
     }
 

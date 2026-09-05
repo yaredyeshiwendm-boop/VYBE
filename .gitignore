@@ -7,3 +7,6 @@ npm-debug.log*
 vybe-cookies.txt
 .vybe-test-cookie.txt
 public/**/*.before-*
+.vercel
+.env.*
+!.env.example

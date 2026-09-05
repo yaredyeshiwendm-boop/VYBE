@@ -1,16 +1,5 @@
 const multer = require("multer");
 const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
-
-const MEDIA_DIR = path.join(
-  __dirname,
-  "../../uploads/media"
-);
-
-fs.mkdirSync(MEDIA_DIR, {
-  recursive: true
-});
 
 const ALLOWED = new Map([
   ["image/jpeg", { type: "image", max: 10 * 1024 * 1024, ext: ".jpg" }],
@@ -29,16 +18,11 @@ const upload = multer({
   },
 
   fileFilter(req, file, cb) {
-    const rule = ALLOWED.get(file.mimetype);
-
-    if (!rule) {
-      return cb(
-        new Error(
-          "Only JPG, PNG, WebP, MP4 and WebM files are allowed"
-        )
-      );
-    }
-
+    /*
+     * Do not trust the client-declared MIME type here.
+     * Android/WebView can report an incorrect or empty MIME type.
+     * The actual file signature is validated later.
+     */
     cb(null, true);
   }
 });
@@ -108,7 +92,17 @@ function validateUploadedFile(file) {
     throw new Error("Media file is required");
   }
 
-  const rule = getMediaRule(file.mimetype);
+  /*
+   * Determine the media type from the actual file bytes.
+   * Do not rely on the MIME type supplied by the browser/device.
+   */
+  const detected = detectFileType(file.buffer);
+
+  if (!detected) {
+    throw new Error("Unsupported or invalid media file");
+  }
+
+  const rule = getMediaRule(detected);
 
   if (!rule) {
     throw new Error("Unsupported media type");
@@ -122,40 +116,35 @@ function validateUploadedFile(file) {
     );
   }
 
-  const detected = detectFileType(file.buffer);
-
-  if (detected !== file.mimetype) {
-    throw new Error("File content does not match its declared type");
-  }
-
   return {
     type: rule.type,
-    mimeType: file.mimetype,
+    mimeType: detected,
     sizeBytes: file.size,
     extension: rule.ext
   };
 }
 
-function saveUploadedFile(file, metadata) {
+async function saveUploadedFile(file, metadata) {
+  const { put } = require("@vercel/blob");
+
   const filename =
     crypto.randomBytes(24).toString("hex") +
     metadata.extension;
 
-  const absolutePath = path.join(
-    MEDIA_DIR,
-    filename
-  );
-
-  fs.writeFileSync(
-    absolutePath,
+  const blob = await put(
+    `media/${filename}`,
     file.buffer,
-    { flag: "wx", mode: 0o600 }
+    {
+      access: "public",
+      contentType: metadata.mimeType,
+      addRandomSuffix: false
+    }
   );
 
   return {
     filename,
-    absolutePath,
-    url: `/uploads/media/${filename}`
+    absolutePath: null,
+    url: blob.url
   };
 }
 
@@ -163,5 +152,5 @@ module.exports = {
   upload,
   validateUploadedFile,
   saveUploadedFile,
-  MEDIA_DIR
+  MEDIA_DIR: null
 };
